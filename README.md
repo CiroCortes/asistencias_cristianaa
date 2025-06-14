@@ -185,3 +185,27 @@ Internacionalización: Soporte para múltiples idiomas si la organización es gl
 Pruebas Unitarias e Integración: Implementar pruebas exhaustivas para asegurar la calidad y estabilidad de la aplicación.
 CI/CD: Configurar pipelines de Integración Continua y Despliegue Continuo para automatizar el proceso de construcción y entrega.
 Funciones de Cloud (Firebase Functions): Para lógica de negocio compleja, como enviar emails automáticos, generar reportes programados o validar datos en el backend. Por ejemplo, para automatizar la aprobación de usuarios en ciertos escenarios o notificar sobre baja asistencia.
+
+## 4. Progreso y Próximos Pasos
+
+### 4.1. Pasos Completados:
+
+1.  **Actualización del Android Gradle Plugin (AGP)**: Se actualizó la versión del AGP a 8.2.1 o superior en `asistencias_app/android/settings.gradle` para resolver problemas de compatibilidad con Java 21.
+2.  **Habilitación de la API de Cloud Firestore**: Se guió en la habilitación de la API de Firestore en la consola de Firebase para resolver errores de `PERMISSION_DENIED`.
+3.  **Configuración y Consolidación de Archivos `.gitignore`**: Se revisaron y consolidaron las reglas de `.gitignore`, asegurando que archivos sensibles como `google-services.json` sean ignorados adecuadamente en `asistencias_app/android/.gitignore`, y se eliminó el archivo `.gitignore` redundante.
+4.  **Discusión sobre Reglas de Seguridad de Firestore**: Se proporcionó orientación sobre las reglas de seguridad de Firestore, enfatizando la necesidad de ajustarlas para producción.
+5.  **Creación del Proyecto Flutter**: `asistencias_app` fue creado.
+6.  **Estructura de Carpetas Inicial**: Se establecieron las carpetas `config`, `core`, `data`, `domain`, `presentation` y subcarpetas para pantallas (`screens/admin_dashboard`).
+7.  **Diseño Básico del Panel de Administración**: Implementación inicial de `AdminDashboardScreen` con resumen de asistencia, acciones rápidas y barra de navegación inferior, basándose en el layout de referencia.
+8.  **Internacionalización (Español)**: Todos los textos visibles en `AdminDashboardScreen` fueron traducidos al español.
+9.  **Inicialización de Repositorio Git**: El repositorio Git ha sido inicializado y el primer commit realizado.
+
+### 4.2. Próximos Pasos:
+
+1.  **Integración de Firebase**: Configurar Firebase en el proyecto para autenticación y base de datos (Firestore).
+2.  **Modelos de Datos**: Implementar los modelos de datos (`UserModel`, `AttendeeModel`, `LocationModel`, `AttendanceRecordModel`) según lo definido en la sección 2.1.
+3.  **Servicios y Repositorios**: Desarrollar los servicios y repositorios para interactuar con Firebase (autenticación y Firestore).
+4.  **Casos de Uso (Use Cases)**: Implementar la lógica de negocio a través de los casos de uso (`LoginUser`, `RegisterAttendance`, `GetAttendees`, etc.).
+5.  **Gestión de Estado (Providers)**: Conectar la lógica de negocio con la interfaz de usuario usando Providers (`AuthProvider`, `UserProvider`, `AttendeeProvider`, `AttendanceProvider`).
+6.  **Implementación del Gráfico de Asistencia**: Reemplazar el placeholder del gráfico en `AdminDashboardScreen` con datos reales.
+7.  **Navegación**: Implementar la navegación entre las diferentes pantallas de la aplicación y la lógica de la `BottomNavigationBar`.
