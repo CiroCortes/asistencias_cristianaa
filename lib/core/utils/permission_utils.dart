@@ -1,6 +1,10 @@
 import 'package:asistencias_app/data/models/user_model.dart';
 
 class PermissionUtils {
+  static bool isAdmin(UserModel user) {
+    return user.role == 'admin';
+  }
+
   static bool canManageLocations(UserModel user) {
     return user.role == 'admin' && user.isApproved;
   }

@@ -3,6 +3,7 @@ import 'package:asistencias_app/presentation/screens/admin_dashboard/admin_dashb
 import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/core/providers/location_provider.dart';
 // firebase
 import 'package:firebase_core/firebase_core.dart';
 import 'package:asistencias_app/firebase_options.dart';
@@ -24,6 +25,7 @@ class AsistenciasApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
       ],
       child: MaterialApp(
         title: 'App de Asistencias',

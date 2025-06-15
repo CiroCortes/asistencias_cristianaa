@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/utils/permission_utils.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/presentation/screens/admin/locations/locations_screen.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -17,6 +18,17 @@ class AdminDashboardScreen extends StatelessWidget {
       );
     }
 
+    if (!PermissionUtils.isAdmin(user)) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Acceso Denegado'),
+        ),
+        body: const Center(
+          child: Text('No tienes permisos para acceder a esta sección'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Panel de Administración'),
@@ -26,6 +38,17 @@ class AdminDashboardScreen extends StatelessWidget {
             // TODO: Implementar navegación del menú
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await userProvider.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -123,7 +146,14 @@ class AdminDashboardScreen extends StatelessWidget {
                       context, 'Gestionar Usuarios', Icons.people_alt, () {}),
                 if (PermissionUtils.canManageLocations(user))
                   _buildActionButton(
-                      context, 'Gestionar Ubicaciones', Icons.location_on, () {}),
+                      context, 'Gestionar Ubicaciones', Icons.location_on, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LocationsScreen(),
+                      ),
+                    );
+                  }),
                 if (PermissionUtils.canViewReports(user))
                   _buildActionButton(
                       context, 'Reportes Detallados', Icons.description, () {}),
