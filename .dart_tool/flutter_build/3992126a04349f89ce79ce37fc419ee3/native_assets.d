@@ -1,1 +1,0 @@
- D:\\informatica\\Flutter\\Aplicacion_de_asistencias\\asistencias_app\\.dart_tool\\flutter_build\\3992126a04349f89ce79ce37fc419ee3\\native_assets.yaml: 
