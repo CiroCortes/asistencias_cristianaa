@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
+import 'package:asistencias_app/core/providers/users_provider.dart';
+import 'package:asistencias_app/core/providers/meeting_provider.dart';
 // firebase
 import 'package:firebase_core/firebase_core.dart';
 import 'package:asistencias_app/firebase_options.dart';
@@ -34,6 +36,8 @@ class AsistenciasApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => UsersProvider()),
+        ChangeNotifierProvider(create: (_) => MeetingProvider()),
       ],
       child: MaterialApp(
         title: 'App de Asistencias',

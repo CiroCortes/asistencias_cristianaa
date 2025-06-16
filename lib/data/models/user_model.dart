@@ -7,6 +7,7 @@ class UserModel {
   final String role; // 'normal_user', 'admin'
   final String? sectorId; // ID del sector al que pertenece el usuario normal
   final bool isApproved; // Para la aprobación del administrador
+  final String? photoUrl;
 
   UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     required this.role,
     this.sectorId,
     required this.isApproved,
+    this.photoUrl,
   });
 
   factory UserModel.fromFirestore(
@@ -27,6 +29,7 @@ class UserModel {
       role: data?['role'],
       sectorId: data?['sectorId'],
       isApproved: data?['isApproved'] ?? false,
+      photoUrl: data?['photoUrl'],
     );
   }
 
@@ -37,6 +40,7 @@ class UserModel {
       "role": role,
       "sectorId": sectorId,
       "isApproved": isApproved,
+      "photoUrl": photoUrl,
     };
   }
 } 

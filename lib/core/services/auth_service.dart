@@ -187,4 +187,32 @@ class AuthService {
       throw Exception('Error al cerrar sesión: $e');
     }
   }
+
+  // Obtener todos los usuarios
+  Stream<List<UserModel>> getAllUsers() {
+    return _firestore.collection('users').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => UserModel.fromFirestore(doc, null)).toList();
+    });
+  }
+
+  // Actualizar el estado de aprobación de un usuario
+  Future<void> updateUserApproval(String uid, bool isApproved) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'isApproved': isApproved,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error al actualizar la aprobación del usuario: $e');
+    }
+  }
+
+  // Eliminar un usuario
+  Future<void> deleteUser(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).delete();
+    } catch (e) {
+      throw Exception('Error al eliminar el usuario: $e');
+    }
+  }
 } 
