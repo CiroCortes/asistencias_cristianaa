@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:asistencias_app/presentation/screens/admin_dashboard/admin_dashboard_screen.dart';
-import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
-import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
+import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 // firebase
 import 'package:firebase_core/firebase_core.dart';
 import 'package:asistencias_app/firebase_options.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Habilitar persistencia offline de Firestore
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
   runApp(const AsistenciasApp());
 }
 
@@ -33,12 +41,7 @@ class AsistenciasApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/admin_dashboard': (context) => const AdminDashboardScreen(),
-        },
+        home: const AuthWrapper(),
       ),
     );
   }
