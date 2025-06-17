@@ -74,17 +74,53 @@ flutter_attendance_app/
 8. **Configuración de Dependencias**: Se han configurado las dependencias necesarias en el archivo `pubspec.yaml`.
 9. **Inicialización de Repositorio Git**: El repositorio Git ha sido inicializado y el primer commit realizado.
 10. **Refactorización y Estabilización de Autenticación Firebase (Google Sign-In y Roles)**: Se abordaron y resolvieron múltiples errores relacionados con la autenticación de Firebase y Google Sign-In (`type List<Object?>' is not a subtype of type 'PigeonUserDetails?` y `java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'`). Esto incluyó:
-    * Actualización de las versiones de `firebase_auth` (a `^5.6.0`), `firebase_core` (a `^3.14.0`) y `cloud_firestore` (a `^5.6.9`) para garantizar la compatibilidad entre paquetes.
-    * Creación e integración de `lib/core/utils/permission_utils.dart` para centralizar la lógica de permisos y roles de usuario.
-    * Implementación de `lib/core/providers/user_provider.dart` para gestionar el estado del usuario (`UserModel`) a través de `Provider`.
-    * Modificación de `lib/presentation/screens/admin_dashboard/admin_dashboard_screen.dart` para usar `UserProvider` y aplicar permisos.
-    * Verificación y ajuste de la configuración SHA-1 en Firebase.
-    * Actualización del `README.md` con los avances.
+    *   Actualización de las versiones de `firebase_auth` (a `^5.6.0`), `firebase_core` (a `^3.14.0`) y `cloud_firestore` (a `^5.6.9`) para garantizar la compatibilidad entre paquetes.
+    *   Creación e integración de `lib/core/utils/permission_utils.dart` para centralizar la lógica de permisos y roles de usuario.
+    *   Implementación de `lib/core/providers/user_provider.dart` para gestionar el estado del usuario (`UserModel`) a través de `Provider`.
+    *   Modificación de `lib/presentation/screens/admin_dashboard/admin_dashboard_screen.dart` para usar `UserProvider` y aplicar permisos.
+    *   Verificación y ajuste de la configuración SHA-1 en Firebase.
+    *   Actualización del `README.md` con los avances.
+11. **Implementación de Persistencia de Sesión y Gestión de Roles en la Interfaz**: Se mejoró la experiencia de usuario y la gestión de roles de la aplicación, incluyendo:
+    *   Creación de `lib/presentation/screens/auth/auth_wrapper.dart` para manejar la redirección basada en el estado de autenticación y el rol del usuario (administrador o usuario normal).
+    *   Configuración de `AuthWrapper` como la pantalla de inicio de la aplicación en `lib/main.dart`.
+    *   Habilitación de la persistencia de datos offline de Firestore en `lib/main.dart`.
+    *   Actualización de `lib/core/providers/user_provider.dart` para escuchar los cambios de estado de autenticación de Firebase y cargar la información del usuario.
+    *   Creación de `lib/presentation/screens/user_dashboard/user_dashboard_screen.dart` para la interfaz de usuario de usuarios no administradores.
+    *   Modificación de `lib/presentation/screens/admin_dashboard/admin_dashboard_screen.dart` para integrar la gestión de roles.
+12. **Gestión de Usuarios (Administrativa)**: Se implementó la funcionalidad para que los administradores puedan gestionar usuarios, incluyendo:
+    *   Adición de métodos `getAllUsers`, `updateUserApproval` y `deleteUser` en `lib/core/services/auth_service.dart`.
+    *   Creación de `lib/core/providers/users_provider.dart` para la gestión del estado de la lista de usuarios.
+    *   Implementación de `lib/presentation/screens/admin/user_management_screen.dart` para la interfaz de gestión de usuarios.
+    *   Corrección de un error de linter relacionado con `photoUrl` en `lib/data/models/user_model.dart`.
+    *   Integración de `UsersProvider` en `MultiProvider` en `lib/main.dart` y adición de `UserManagementScreen` al `AdminDashboardScreen`.
+13. **Gestión de Eventos/Reuniones Recurrentes**: Se implementó la funcionalidad para que los administradores creen y gestionen reuniones recurrentes, incluyendo:
+    *   Creación de `lib/data/models/recurring_meeting_model.dart`.
+    *   Creación de `lib/core/services/meeting_service.dart`.
+    *   Creación de `lib/core/providers/meeting_provider.dart`.
+    *   Implementación de `lib/presentation/screens/admin/meetings/create_recurring_meeting_screen.dart` para la creación de reuniones.
+    *   Implementación de `lib/presentation/screens/admin/meetings/admin_events_tab.dart` para mostrar los eventos.
+    *   Creación de `lib/core/constants/app_constants.dart` para constantes de la aplicación.
+    *   Refactorización de `lib/presentation/screens/admin_dashboard/admin_dashboard_screen.dart` para usar un `IndexedStack` y `BottomNavigationBar` para la navegación de pestañas.
+    *   Corrección de un error de alcance con `meetingProvider` en `CreateRecurringMeetingScreen`.
+14. **Navegación y Sección "Acerca de"**: Se reorganizó la navegación de la aplicación y se añadió una sección de información.
+    *   Creación de `lib/presentation/screens/profile_screen.dart`.
+    *   Creación de `lib/presentation/screens/about_screen.dart`.
+    *   Refactorización de `lib/presentation/screens/admin_dashboard/admin_dashboard_screen.dart` para mover el perfil a un cajón lateral (drawer) y añadir opciones de cerrar sesión y "Acerca de".
+15. **Gestión de Asistentes (Miembros/Oyentes)**: Se implementó una gestión unificada para miembros y oyentes, con activación/desactivación y sin eliminación.
+    *   Modificación de `lib/data/models/attendee_model.dart` para incluir el campo `isActive`.
+    *   Modificación de `lib/core/services/attendee_service.dart` para añadir `updateAttendee` y remover la funcionalidad de `deleteAttendee`.
+    *   Modificación de `lib/core/providers/attendee_provider.dart` para añadir `updateAttendee`.
+    *   Implementación y refactorización de `lib/presentation/screens/attendees/attendees_screen.dart` para:
+        *   Eliminar el menú dinámico y mostrar una lista unificada de miembros y oyentes.
+        *   Permitir la edición de asistentes con un switch para activar/desactivar.
+        *   Manejar la selección de ubicación (ciudad-comuna-localidad) para administradores y asignar el `sectorId` del usuario para usuarios normales.
+        *   Corrección de errores de linter relacionados con la nulabilidad y el método `copyWith` en `AttendeeModel`.
+    *   Aseguramiento de que las clases `City`, `Commune` y `Location` en `lib/data/models/location_models.dart` sobrescriban los operadores `==` y `hashCode` para un correcto funcionamiento de los `DropdownButton`.
 
 ### 4.2. Próximos Pasos
-1. **Implementación de la UI**: Desarrollar las interfaces de usuario para todas las pantallas.
-2. **Implementación de la Lógica de Negocio**: Desarrollar la lógica de negocio para todas las funcionalidades.
-3. **Pruebas**: Realizar pruebas unitarias y de integración.
+1. **Implementación de la UI**: Desarrollar las interfaces de usuario restantes.
+2. **Implementación de la Lógica de Negocio**: Desarrollar la lógica de negocio para las funcionalidades pendientes.
+3. **Pruebas**: Realizar pruebas unitarias y de integración exhaustivas.
 4. **Despliegue**: Desplegar la aplicación en las tiendas de aplicaciones.
 
 ## 5. Guía de Instalación

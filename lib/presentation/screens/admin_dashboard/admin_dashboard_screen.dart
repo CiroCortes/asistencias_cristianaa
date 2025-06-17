@@ -6,6 +6,7 @@ import 'package:asistencias_app/presentation/screens/admin/user_management_scree
 import 'package:asistencias_app/presentation/screens/admin/meetings/admin_events_tab.dart';
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
 import 'package:asistencias_app/presentation/screens/about_screen.dart';
+import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     // Contenido del Tab de Eventos
     const AdminEventsTab(),
     // Contenido del Tab de Asistentes (TODO: Implementar)
-    const Center(child: Text('Pantalla de Gestión de Asistentes')),
+    const AttendeesScreen(),
   ];
 
   void _onItemTapped(int index) {

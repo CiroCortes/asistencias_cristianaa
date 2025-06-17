@@ -38,6 +38,14 @@ class City {
       'isActive': isActive,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is City && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class Commune {
@@ -78,6 +86,14 @@ class Commune {
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Commune && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class Location {
@@ -122,4 +138,12 @@ class Location {
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Location && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 } 
