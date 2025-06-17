@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
+import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
+import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
+import 'package:asistencias_app/presentation/screens/admin_dashboard/admin_dashboard_screen.dart';
+import 'package:asistencias_app/presentation/screens/user_dashboard/user_dashboard_screen.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/core/providers/users_provider.dart';
 import 'package:asistencias_app/core/providers/meeting_provider.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
+import 'package:asistencias_app/core/providers/attendance_record_provider.dart';
 // firebase
 import 'package:firebase_core/firebase_core.dart';
 import 'package:asistencias_app/firebase_options.dart';
@@ -44,6 +49,11 @@ class AsistenciasApp extends StatelessWidget {
           update: (context, userProvider, previousAttendeeProvider) =>
               AttendeeProvider(userProvider),
         ),
+        ChangeNotifierProxyProvider<UserProvider, AttendanceRecordProvider>(
+          create: (context) => AttendanceRecordProvider(context.read<UserProvider>()),
+          update: (context, userProvider, previousAttendanceRecordProvider) =>
+              AttendanceRecordProvider(userProvider),
+        ),
       ],
       child: MaterialApp(
         title: 'App de Asistencias',
@@ -51,7 +61,14 @@ class AsistenciasApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        home: const AuthWrapper(),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const AuthWrapper(),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/admin_dashboard': (context) => const AdminDashboardScreen(),
+          '/user_dashboard': (context) => const UserDashboardScreen(),
+        },
       ),
     );
   }

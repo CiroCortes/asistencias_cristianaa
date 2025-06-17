@@ -207,6 +207,15 @@ class AuthService {
     }
   }
 
+  // Nuevo método para actualizar un usuario completo (incluyendo rol y sectorId)
+  Future<void> updateUser(UserModel user) async {
+    try {
+      await _firestore.collection('users').doc(user.uid).update(user.toFirestore());
+    } catch (e) {
+      throw Exception('Error al actualizar el usuario: $e');
+    }
+  }
+
   // Eliminar un usuario
   Future<void> deleteUser(String uid) async {
     try {

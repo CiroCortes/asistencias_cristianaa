@@ -44,9 +44,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // Cargar el usuario en el provider
       await context.read<UserProvider>().loadUser();
 
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/admin_dashboard');
-      }
+      // La navegación es manejada por AuthWrapper
+      // if (mounted) {
+      //   Navigator.of(context).pushReplacementNamed('/admin_dashboard');
+      // }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -72,9 +73,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // Cargar el usuario en el provider
       await context.read<UserProvider>().loadUser();
 
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/admin_dashboard');
-      }
+      // La navegación es manejada por AuthWrapper
+      // if (mounted) {
+      //   Navigator.of(context).pushReplacementNamed('/admin_dashboard');
+      // }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();

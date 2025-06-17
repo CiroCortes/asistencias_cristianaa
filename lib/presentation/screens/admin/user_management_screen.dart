@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/core/providers/users_provider.dart';
+import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/data/models/user_model.dart';
+import 'package:asistencias_app/data/models/location_models.dart';
+import 'package:collection/collection.dart';
 
 enum UserFilter {
   pendingApproval,
@@ -17,6 +20,200 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   UserFilter _selectedFilter = UserFilter.pendingApproval;
+
+  City? _selectedCity;
+  Commune? _selectedCommune;
+  Location? _selectedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<LocationProvider>().loadCities();
+    });
+  }
+
+  void _showEditUserDialog([UserModel? userToEdit]) {
+    bool _isApproved = userToEdit?.isApproved ?? false;
+    String _selectedRole = userToEdit?.role ?? 'normal_user';
+    final TextEditingController _displayNameController = TextEditingController(text: userToEdit?.displayName ?? '');
+    final TextEditingController _emailController = TextEditingController(text: userToEdit?.email ?? '');
+
+    final locationProvider = context.read<LocationProvider>();
+    if (userToEdit?.sectorId != null) {
+      _selectedLocation = locationProvider.locations.firstWhereOrNull((loc) => loc.id == userToEdit!.sectorId);
+      if (_selectedLocation != null) {
+        _selectedCommune = locationProvider.communes.firstWhereOrNull((comm) => comm.id == _selectedLocation!.communeId);
+        if (_selectedCommune != null) {
+          _selectedCity = locationProvider.cities.firstWhereOrNull((city) => city.id == _selectedCommune!.cityId);
+          if (_selectedCity != null) {
+            locationProvider.loadCommunes(_selectedCity!.id).then((_) {
+              if (_selectedCommune != null) {
+                locationProvider.loadLocations(_selectedCommune!.id);
+              }
+            });
+          }
+        }
+      }
+    } else {
+      _selectedCity = null;
+      _selectedCommune = null;
+      _selectedLocation = null;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setStateInDialog) {
+            final locationProvider = dialogContext.watch<LocationProvider>();
+            final usersProvider = dialogContext.read<UsersProvider>();
+
+            return AlertDialog(
+              title: Text(userToEdit == null ? 'Aprobar/Editar Usuario' : 'Editar Usuario'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: _displayNameController,
+                      decoration: const InputDecoration(labelText: 'Nombre de Usuario'),
+                      readOnly: userToEdit != null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(labelText: 'Correo Electrónico'),
+                      readOnly: userToEdit != null,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(labelText: 'Rol'),
+                      value: _selectedRole,
+                      items: const [
+                        DropdownMenuItem(value: 'admin', child: Text('Administrador')),
+                        DropdownMenuItem(value: 'normal_user', child: Text('Usuario Normal')),
+                      ],
+                      onChanged: (String? newValue) {
+                        setStateInDialog(() {
+                          _selectedRole = newValue!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    CheckboxListTile(
+                      title: const Text('Aprobado'),
+                      value: _isApproved,
+                      onChanged: (bool? newValue) {
+                        setStateInDialog(() {
+                          _isApproved = newValue!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Asignar Ubicación (Sector)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<City>(
+                      decoration: const InputDecoration(labelText: 'Ciudad'),
+                      value: _selectedCity,
+                      items: locationProvider.cities.map((city) {
+                        return DropdownMenuItem(value: city, child: Text(city.name));
+                      }).toList(),
+                      onChanged: (City? newValue) {
+                        setStateInDialog(() {
+                          _selectedCity = newValue;
+                          _selectedCommune = null;
+                          _selectedLocation = null;
+                          if (newValue != null) {
+                            locationProvider.loadCommunes(newValue.id);
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<Commune>(
+                      decoration: const InputDecoration(labelText: 'Comuna'),
+                      value: _selectedCommune,
+                      items: locationProvider.communes.map((commune) {
+                        return DropdownMenuItem(value: commune, child: Text(commune.name));
+                      }).toList(),
+                      onChanged: (_selectedCity == null) ? null : (Commune? newValue) {
+                        setStateInDialog(() {
+                          _selectedCommune = newValue;
+                          _selectedLocation = null;
+                          if (newValue != null) {
+                            locationProvider.loadLocations(newValue.id);
+                          }
+                        });
+                      },
+                      hint: _selectedCity == null ? const Text('Selecciona una Ciudad primero') : null,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<Location>(
+                      decoration: const InputDecoration(labelText: 'Localidad/Sector'),
+                      value: _selectedLocation,
+                      items: locationProvider.locations.map((location) {
+                        return DropdownMenuItem(value: location, child: Text(location.name));
+                      }).toList(),
+                      onChanged: (_selectedCommune == null) ? null : (Location? newValue) {
+                        setStateInDialog(() {
+                          _selectedLocation = newValue;
+                        });
+                      },
+                      hint: _selectedCommune == null ? const Text('Selecciona una Comuna primero') : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_selectedLocation == null) {
+                       ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('Por favor, selecciona una localidad/sector.')),
+                       );
+                       return;
+                    }
+
+                    final updatedUser = UserModel(
+                      uid: userToEdit?.uid ?? '',
+                      email: _emailController.text,
+                      displayName: _displayNameController.text,
+                      role: _selectedRole,
+                      isApproved: _isApproved,
+                      sectorId: _selectedLocation!.id,
+                    );
+
+                    if (userToEdit == null) {
+                       ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
+                       );
+                    } else {
+                      await usersProvider.updateUser(updatedUser);
+                       ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(content: Text('Usuario actualizado exitosamente.')),
+                       );
+                    }
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    setState(() {
+      _selectedCity = null;
+      _selectedCommune = null;
+      _selectedLocation = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,24 +299,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             Text(
                                 user.role == 'admin' ? 'Admin' : 'Usuario'),
                             const SizedBox(width: 8),
-                            if (!user.isApproved) // Mostrar botón de aprobación si está pendiente
+                            if (!user.isApproved)
                               IconButton(
                                 icon: const Icon(Icons.check_circle, color: Colors.green),
                                 onPressed: () async {
-                                  await usersProvider.updateUserApproval(user.uid, true);
+                                  _showEditUserDialog(user);
                                 },
                               ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () async {
-                                // TODO: Confirmar antes de eliminar
                                 await usersProvider.deleteUser(user.uid);
                               },
                             ),
                           ],
                         ),
                         onTap: () {
-                          // TODO: Navegar a la pantalla de edición de usuario
+                          _showEditUserDialog(user);
                         },
                       ),
                     );
@@ -132,7 +328,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Navegar a la pantalla de añadir nuevo usuario
+          ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
+          );
         },
         child: const Icon(Icons.add),
       ),

@@ -46,9 +46,24 @@ class UsersProvider with ChangeNotifier {
     notifyListeners();
     try {
       await _authService.updateUserApproval(uid, isApproved);
-      await refreshUsers(); // Refresh the list after update
+      await refreshUsers(); // Actualizar la lista después de la actualización
     } catch (e) {
       _errorMessage = 'Error al actualizar la aprobación: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateUser(UserModel user) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.updateUser(user);
+      await refreshUsers(); // Actualizar la lista después de la actualización
+    } catch (e) {
+      _errorMessage = 'Error al actualizar el usuario: $e';
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text('Registro exitoso. Esperando aprobación del administrador.'),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
       setState(() {
@@ -83,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text('Registro con Google exitoso. Esperando aprobación del administrador.'),
           ),
         );
-        Navigator.pop(context);
+        Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
       setState(() {

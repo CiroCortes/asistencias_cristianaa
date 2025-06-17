@@ -173,4 +173,14 @@ class LocationProvider with ChangeNotifier {
     }
     notifyListeners();
   }
+
+  // Limpiar todas las selecciones
+  void clearSelections() {
+    _selectedCity = null;
+    _selectedCommune = null;
+    _selectedLocation = null;
+    _communes = [];
+    _locations = [];
+    notifyListeners();
+  }
 } 

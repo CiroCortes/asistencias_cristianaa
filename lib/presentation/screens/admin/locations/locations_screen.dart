@@ -93,6 +93,9 @@ class _LocationsScreenState extends State<LocationsScreen> {
         setState(() {
           _currentFormType = newSelection.first;
           _resetForm();
+          if (_currentFormType == LocationFormType.city) {
+            context.read<LocationProvider>().clearSelections();
+          }
         });
       },
     );
@@ -347,59 +350,156 @@ class _LocationsScreenState extends State<LocationsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Lista de Ciudades
-        const Text(
-          'Ciudades Existentes',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: locationProvider.cities.length,
-          itemBuilder: (context, index) {
-            final city = locationProvider.cities[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                title: Text(city.name),
-                onTap: () async {
-                  await locationProvider.selectCity(city);
-                  _showCityDetailsDialog(context, locationProvider);
-                },
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () {
-                        _showEditCityDialog(context, locationProvider, city);
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_forever),
-                      onPressed: () {
-                        _showDeleteConfirmationDialog(
-                          context,
-                          'Desactivar Ciudad',
-                          '¿Está seguro de DESACTIVAR la ciudad ${city.name}? Esto la ocultará de las listas.',
-                          () async {
-                            await locationProvider.deactivateCity(city.id);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ],
+        if (_currentFormType == LocationFormType.city) ...[
+          const Text(
+            'Ciudades Existentes',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: locationProvider.cities.length,
+            itemBuilder: (context, index) {
+              final city = locationProvider.cities[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text(city.name),
+                  onTap: () async {
+                    await locationProvider.selectCity(city);
+                    await locationProvider.loadCommunes(city.id);
+                  },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          _showEditCityDialog(context, locationProvider, city);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_forever),
+                        onPressed: () {
+                          _showDeleteConfirmationDialog(
+                            context,
+                            'Desactivar Ciudad',
+                            '¿Está seguro de DESACTIVAR la ciudad ${city.name}? Esto la ocultará de las listas.',
+                            () async {
+                              await locationProvider.deactivateCity(city.id);
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+              );
+            },
+          ),
+          if (locationProvider.selectedCity != null) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Comunas en la ciudad seleccionada',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: locationProvider.communes.length,
+              itemBuilder: (context, index) {
+                final commune = locationProvider.communes[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(commune.name),
+                    onTap: () async {
+                      await locationProvider.selectCommune(commune);
+                      await locationProvider.loadLocations(commune.id);
+                    },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () {
+                            _showEditCommuneDialog(context, locationProvider, commune);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            _showDeleteConfirmationDialog(
+                              context,
+                              'Eliminar Comuna',
+                              '¿Está seguro de eliminar la comuna ${commune.name}?',
+                              () async {
+                                await locationProvider.deleteCommune(commune.id, commune.cityId);
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (locationProvider.selectedCommune != null) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Localidades en la comuna seleccionada',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-
-        // Lista de Comunas
-        if (locationProvider.selectedCity != null) ...[
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: locationProvider.locations.length,
+                itemBuilder: (context, index) {
+                  final location = locationProvider.locations[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      title: Text(location.name),
+                      subtitle: Text(location.address),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () {
+                              _showEditLocationDialog(context, locationProvider, location);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              _showDeleteConfirmationDialog(
+                                context,
+                                'Eliminar Localidad',
+                                '¿Está seguro de eliminar la localidad ${location.name}?',
+                                () async {
+                                  await locationProvider.deleteLocation(location.id, location.communeId);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        ],
+        if (_currentFormType == LocationFormType.commune && locationProvider.selectedCity != null) ...[
           const Text(
             'Comunas en la ciudad seleccionada',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -415,6 +515,10 @@ class _LocationsScreenState extends State<LocationsScreen> {
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   title: Text(commune.name),
+                  onTap: () async {
+                    await locationProvider.selectCommune(commune);
+                    await locationProvider.loadLocations(commune.id);
+                  },
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -444,11 +548,56 @@ class _LocationsScreenState extends State<LocationsScreen> {
               );
             },
           ),
-          const SizedBox(height: 24),
+          if (locationProvider.selectedCommune != null) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Localidades en la comuna seleccionada',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: locationProvider.locations.length,
+              itemBuilder: (context, index) {
+                final location = locationProvider.locations[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(location.name),
+                    subtitle: Text(location.address),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () {
+                            _showEditLocationDialog(context, locationProvider, location);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            _showDeleteConfirmationDialog(
+                              context,
+                              'Eliminar Localidad',
+                              '¿Está seguro de eliminar la localidad ${location.name}?',
+                              () async {
+                                await locationProvider.deleteLocation(location.id, location.communeId);
+                                Navigator.pop(context);
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ],
-
-        // Lista de Localidades
-        if (locationProvider.selectedCommune != null) ...[
+        if (_currentFormType == LocationFormType.location && locationProvider.selectedCommune != null) ...[
           const Text(
             'Localidades en la comuna seleccionada',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -496,41 +645,6 @@ class _LocationsScreenState extends State<LocationsScreen> {
           ),
         ],
       ],
-    );
-  }
-
-  Future<void> _showCityDetailsDialog(BuildContext context, LocationProvider locationProvider) async {
-    final city = locationProvider.selectedCity;
-    if (city == null) return;
-
-    await locationProvider.loadCommunes(city.id);
-    final totalCommunes = locationProvider.communes.length;
-
-    int totalLocations = 0;
-    for (var commune in locationProvider.communes) {
-      await locationProvider.loadLocations(commune.id);
-      totalLocations += locationProvider.locations.length;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Detalles de ${city.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Comunas: $totalCommunes'),
-            Text('Localidades: $totalLocations'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
     );
   }
 

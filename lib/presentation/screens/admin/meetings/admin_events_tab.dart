@@ -5,7 +5,9 @@ import 'package:asistencias_app/data/models/recurring_meeting_model.dart';
 import 'package:asistencias_app/presentation/screens/admin/meetings/create_recurring_meeting_screen.dart';
 
 class AdminEventsTab extends StatelessWidget {
-  const AdminEventsTab({super.key});
+  final bool isAdminView;
+
+  const AdminEventsTab({super.key, this.isAdminView = true});
 
   @override
   Widget build(BuildContext context) {
@@ -35,27 +37,31 @@ class AdminEventsTab extends StatelessWidget {
                   title: Text(meeting.name),
                   subtitle: Text(
                       'Días: ${meeting.daysOfWeek.join(', ')} - Hora: ${meeting.time}'),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    // TODO: Navegar a la pantalla de edición de reunión recurrente
-                  },
+                  trailing: isAdminView ? const Icon(Icons.arrow_forward_ios) : null,
+                  onTap: isAdminView
+                      ? () {
+                          // TODO: Navegar a la pantalla de edición de reunión recurrente
+                        }
+                      : null, // Deshabilita el onTap si no es vista de administrador
                 ),
               );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreateRecurringMeetingScreen(),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: isAdminView
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreateRecurringMeetingScreen(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add),
+            )
+          : null, // Oculta el botón si no es vista de administrador
     );
   }
 } 

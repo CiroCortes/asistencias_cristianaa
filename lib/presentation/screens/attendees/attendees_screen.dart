@@ -379,12 +379,12 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                 }
 
                 List<AttendeeModel> displayAttendees = attendeeProvider.attendees
-                    .where((a) => a.type == 'member' || a.type == 'listener')
+                    .where((a) => a.isActive)
                     .toList();
 
                 if (displayAttendees.isEmpty) {
                   return const Center(
-                    child: Text('No hay miembros ni oyentes registrados.'),
+                    child: Text('No hay asistentes registrados.'),
                   );
                 }
 
@@ -392,21 +392,41 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                   itemCount: displayAttendees.length,
                   itemBuilder: (context, index) {
                     final attendee = displayAttendees[index];
+                    String typeText = '';
+                    Color typeColor = Colors.grey;
+                    
+                    switch (attendee.type) {
+                      case 'member':
+                        typeText = 'Miembro';
+                        typeColor = Colors.blue;
+                        break;
+                      case 'listener':
+                        typeText = 'Oyente';
+                        typeColor = Colors.green;
+                        break;
+                      case 'visitor':
+                        typeText = 'Visita';
+                        typeColor = Colors.orange;
+                        break;
+                    }
+
                     return Card(
                       margin: const EdgeInsets.symmetric(
                           horizontal: 16.0, vertical: 8.0),
                       child: ListTile(
                         leading: CircleAvatar(
+                          backgroundColor: typeColor,
                           child: Text(
                             (attendee.name != null && attendee.name!.isNotEmpty)
                                 ? attendee.name![0].toUpperCase()
-                                : (attendee.type == 'member' ? 'M' : 'O'),
+                                : typeText[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                         title: Text(
                           (attendee.name != null && attendee.name!.isNotEmpty)
                               ? '${attendee.name!} ${attendee.lastName ?? ''}'
-                              : 'Oyente - ${attendee.id!.substring(0, 4)}',
+                              : '$typeText - ${attendee.id!.substring(0, 4)}',
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,12 +434,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                             if (attendee.contactInfo != null && attendee.contactInfo!.isNotEmpty)
                               Text(attendee.contactInfo!),
                             Text(
-                              'Tipo: ${attendee.type == 'member' ? 'Miembro' : 'Oyente'}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                            ),
-                            Text(
-                              'Estado: ${attendee.isActive ? 'Activo' : 'Inactivo'}',
-                              style: TextStyle(fontSize: 12, color: attendee.isActive ? Colors.green : Colors.red),
+                              'Tipo: $typeText',
+                              style: TextStyle(fontSize: 12, color: typeColor),
                             ),
                           ],
                         ),

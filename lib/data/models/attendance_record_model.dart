@@ -9,6 +9,7 @@ class AttendanceRecordModel {
   final int year;
   final String meetingType;
   final List<String> attendedAttendeeIds;
+  final int visitorCount;
   final String recordedByUserId;
 
   AttendanceRecordModel({
@@ -17,6 +18,7 @@ class AttendanceRecordModel {
     required this.date,
     required this.meetingType,
     required this.attendedAttendeeIds,
+    this.visitorCount = 0,
     required this.recordedByUserId,
   })  : weekNumber = getWeekNumber(date),
         year = date.year;
@@ -30,6 +32,7 @@ class AttendanceRecordModel {
       date: (data?['date'] as Timestamp).toDate(),
       meetingType: data?['meetingType'],
       attendedAttendeeIds: List<String>.from(data?['attendedAttendeeIds'] ?? []),
+      visitorCount: data?['visitorCount'] ?? 0,
       recordedByUserId: data?['recordedByUserId'],
     );
   }
@@ -42,6 +45,7 @@ class AttendanceRecordModel {
       "year": year,
       "meetingType": meetingType,
       "attendedAttendeeIds": attendedAttendeeIds,
+      "visitorCount": visitorCount,
       "recordedByUserId": recordedByUserId,
     };
   }

@@ -7,6 +7,7 @@ import 'package:asistencias_app/presentation/screens/admin/meetings/admin_events
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
 import 'package:asistencias_app/presentation/screens/about_screen.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
+import 'package:asistencias_app/presentation/screens/record_attendance/record_attendance_screen.dart';
 import 'package:provider/provider.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -22,11 +23,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static List<Widget> _widgetOptions = <Widget>[
     // Contenido del Tab de Inicio (Dashboard actual)
     _HomeDashboardContent(),
-    // Contenido del Tab de Asistencia (TODO: Implementar)
-    const Center(child: Text('Pantalla de Registro de Asistencia')),
-    // Contenido del Tab de Eventos
-    const AdminEventsTab(),
-    // Contenido del Tab de Asistentes (TODO: Implementar)
+    // Contenido del Tab de Asistencia (Ahora RecordAttendanceScreen)
+    const RecordAttendanceScreen(),
+    // Contenido del Tab de Eventos (AdminEventsTab con permisos de administrador)
+    const AdminEventsTab(isAdminView: true),
+    // Contenido del Tab de Asistentes
     const AttendeesScreen(),
   ];
 
@@ -140,7 +141,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: 'Inicio',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.people),
+            icon: Icon(Icons.assignment),
             label: 'Asistencia',
           ),
           BottomNavigationBarItem(
