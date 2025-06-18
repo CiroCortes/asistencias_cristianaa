@@ -13,6 +13,9 @@ class LocationProvider with ChangeNotifier {
   Commune? _selectedCommune;
   Location? _selectedLocation;
 
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
   // Getters
   List<City> get cities => _cities;
   List<Commune> get communes => _communes;
@@ -24,21 +27,30 @@ class LocationProvider with ChangeNotifier {
 
   // Cargar ciudades
   Future<void> loadCities() async {
+    _isLoading = true;
+    notifyListeners();
     print('Cargando ciudades...');
     _cities = await _locationService.getCities();
     print('Ciudades cargadas: ${_cities.length}');
+    _isLoading = false;
     notifyListeners();
   }
 
   // Cargar comunas de una ciudad
   Future<void> loadCommunes(String cityId) async {
+    _isLoading = true;
+    notifyListeners();
     _communes = await _locationService.getCommunesByCity(cityId);
+    _isLoading = false;
     notifyListeners();
   }
 
   // Cargar locaciones de una comuna
   Future<void> loadLocations(String communeId) async {
+    _isLoading = true;
+    notifyListeners();
     _locations = await _locationService.getLocationsByCommune(communeId);
+    _isLoading = false;
     notifyListeners();
   }
 

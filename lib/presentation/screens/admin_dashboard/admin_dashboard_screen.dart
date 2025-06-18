@@ -9,6 +9,13 @@ import 'package:asistencias_app/presentation/screens/about_screen.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
 import 'package:asistencias_app/presentation/screens/record_attendance/record_attendance_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:asistencias_app/core/providers/attendance_record_provider.dart';
+import 'package:asistencias_app/core/services/attendance_record_service.dart';
+import 'package:asistencias_app/core/providers/attendee_provider.dart';
+import 'package:asistencias_app/data/models/attendee_model.dart';
+import 'package:asistencias_app/data/models/attendance_record_model.dart';
+import 'package:asistencias_app/presentation/screens/admin_dashboard/detailed_reports_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -168,125 +175,200 @@ class _HomeDashboardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.user!;
+    final attendeeProvider = context.watch<AttendeeProvider>();
+    final attendees = attendeeProvider.attendees;
+    final attendanceRecordService = AttendanceRecordService();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Resumen',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
+    return StreamBuilder<List<AttendanceRecordModel>>(
+      stream: attendanceRecordService.getAllAttendanceRecordsStream(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final records = snapshot.data!.where((r) => r != null).toList();
+        // Filtrar registros del mes actual
+        final now = DateTime.now();
+        final currentMonthRecords = records.where((r) => r.date.month == now.month && r.date.year == now.year).toList();
+        // Mapear attendedAttendeeIds a tipo
+        int totalMembers = 0;
+        int totalListeners = 0;
+        int totalVisitors = 0;
+        for (final record in currentMonthRecords) {
+          final ids = record.attendedAttendeeIds;
+          for (final id in ids) {
+            final attendee = attendees.firstWhere(
+              (a) => a.id == id,
+              orElse: () => AttendeeModel(id: '', type: '', sectorId: '', createdAt: DateTime.now(), createdByUserId: ''),
+            );
+            if (attendee.type == 'member') totalMembers++;
+            if (attendee.type == 'listener') totalListeners++;
+          }
+          totalVisitors += record.visitorCount;
+        }
+        final totalAttendance = totalMembers + totalListeners + totalVisitors;
+        final averageAttendance = currentMonthRecords.isNotEmpty ? (totalAttendance / currentMonthRecords.length).round() : 0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Asistencia Total',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+              const Text(
+                'Resumen',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Asistencia Total',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$totalAttendance',
+                              style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).primaryColor),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '1,234', // Placeholder
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Asistencia Promedio',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$averageAttendance',
+                              style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).primaryColor),
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              if (PermissionUtils.canViewReports(user)) ...[
+                const Text(
+                  'Asistencia Mensual por Tipo',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 220,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: [totalMembers, totalListeners, totalVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 5,
+                      barTouchData: BarTouchData(enabled: true),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              switch (value.toInt()) {
+                                case 0:
+                                  return const Text('Miembros');
+                                case 1:
+                                  return const Text('Oyentes');
+                                case 2:
+                                  return const Text('Visitas');
+                              }
+                              return const Text('');
+                            },
+                          ),
+                        ),
+                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: [
+                        BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: totalMembers.toDouble(), color: Colors.blue)]),
+                        BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: totalListeners.toDouble(), color: Colors.orange)]),
+                        BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: totalVisitors.toDouble(), color: Colors.green)]),
                       ],
                     ),
                   ),
                 ),
+              ],
+              const SizedBox(height: 24),
+              const Text(
+                'Acciones Rápidas',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Asistencia Promedio',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+              const SizedBox(height: 16),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  if (PermissionUtils.canManageUsers(user))
+                    _buildActionButton(
+                        context, 'Gestionar Usuarios', Icons.people_alt, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserManagementScreen(),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '103', // Placeholder
-                          style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor),
+                      );
+                    }),
+                  if (PermissionUtils.canManageLocations(user))
+                    _buildActionButton(
+                        context, 'Gestionar Ubicaciones', Icons.location_on, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LocationsScreen(),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
+                      );
+                    }),
+                  if (PermissionUtils.canViewReports(user))
+                    _buildActionButton(
+                        context, 'Reportes Detallados', Icons.description, () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DetailedReportsScreen(),
+                            ),
+                          );
+                        }),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (PermissionUtils.canViewReports(user)) ...[
-            const Text(
-              'Asistencia por Tipo de Reunión',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 150,
-              color: Colors.grey[200],
-              child: const Center(child: Text('Gráfico de Asistencia')),
-            ),
-          ],
-          const SizedBox(height: 24),
-          const Text(
-            'Acciones Rápidas',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            children: [
-              if (PermissionUtils.canManageUsers(user))
-                _buildActionButton(
-                    context, 'Gestionar Usuarios', Icons.people_alt, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const UserManagementScreen(),
-                    ),
-                  );
-                }),
-              if (PermissionUtils.canManageLocations(user))
-                _buildActionButton(
-                    context, 'Gestionar Ubicaciones', Icons.location_on, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LocationsScreen(),
-                    ),
-                  );
-                }),
-              if (PermissionUtils.canViewReports(user))
-                _buildActionButton(
-                    context, 'Reportes Detallados', Icons.description, () {}),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

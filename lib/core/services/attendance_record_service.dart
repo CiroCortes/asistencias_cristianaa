@@ -24,6 +24,17 @@ class AttendanceRecordService {
     });
   }
 
+  Stream<List<AttendanceRecordModel>> getAllAttendanceRecordsStream() {
+    return _firestore
+        .collection('attendanceRecords')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => AttendanceRecordModel.fromFirestore(doc, null))
+          .toList();
+    });
+  }
+
   // Puedes añadir más métodos aquí según sea necesario, por ejemplo, para
   // obtener registros por tipo de reunión, por fecha, etc.
 } 
