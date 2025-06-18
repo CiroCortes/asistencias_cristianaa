@@ -48,12 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registro exitoso. Esperando aprobación del administrador.'),
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacementNamed(context, '/pending_approval');
       }
     } catch (e) {
       setState(() {
@@ -78,12 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await _authService.signInWithGoogle();
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registro con Google exitoso. Esperando aprobación del administrador.'),
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacementNamed(context, '/pending_approval');
       }
     } catch (e) {
       setState(() {

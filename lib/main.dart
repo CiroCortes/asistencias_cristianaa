@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
 import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
+import 'package:asistencias_app/presentation/screens/auth/pending_approval_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/admin_dashboard_screen.dart';
 import 'package:asistencias_app/presentation/screens/user_dashboard/user_dashboard_screen.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
@@ -66,6 +67,7 @@ class AsistenciasApp extends StatelessWidget {
           '/': (context) => const AuthWrapper(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
+          '/pending_approval': (context) => const PendingApprovalScreen(),
           '/admin_dashboard': (context) => const AdminDashboardScreen(),
           '/user_dashboard': (context) => const UserDashboardScreen(),
         },
