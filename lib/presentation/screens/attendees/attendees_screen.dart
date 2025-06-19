@@ -183,7 +183,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         final locationProvider = context.watch<LocationProvider>();
 
         return AlertDialog(
-          title: Text(attendeeToEdit == null ? 'Añadir Nuevo Asistente' : 'Editar Asistente'),
+          title: const Text('Añadir Nuevo Asistente'),
           content: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -329,7 +329,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         });
                       },
                     ),
-                  ],
+                ],
                 ],
               ),
             ),

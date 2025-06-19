@@ -5,7 +5,7 @@ import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
-import 'package:asistencias_app/data/models/attendee_model.dart';
+
 import 'package:asistencias_app/data/models/location_models.dart';
 
 class DetailedReportsScreen extends StatefulWidget {

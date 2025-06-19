@@ -195,4 +195,39 @@ class LocationProvider with ChangeNotifier {
     _locations = [];
     notifyListeners();
   }
+
+  // Limpiar todos los datos
+  void clearData() {
+    _cities = [];
+    _communes = [];
+    _locations = [];
+    _selectedCity = null;
+    _selectedCommune = null;
+    _selectedLocation = null;
+    notifyListeners();
+  }
+
+  // --- NUEVO: Cargar todas las comunas de todas las ciudades ---
+  Future<List<Commune>> loadAllCommunes() async {
+    List<Commune> allCommunes = [];
+    for (final city in _cities) {
+      final communes = await _locationService.getCommunesByCity(city.id);
+      allCommunes.addAll(communes);
+    }
+    return allCommunes;
+  }
+
+  // --- NUEVO: Cargar todas las localidades de todas las comunas ---
+  Future<List<Location>> loadAllLocations(List<Commune> communes) async {
+    List<Location> allLocations = [];
+    for (final commune in communes) {
+      final locations = await _locationService.getLocationsByCommune(commune.id);
+      allLocations.addAll(locations);
+    }
+    return allLocations;
+  }
+
+  // --- NUEVO: Setters públicos para communes y locations (solo para uso controlado) ---
+  set setCommunes(List<Commune> communes) => _communes = communes;
+  set setLocations(List<Location> locations) => _locations = locations;
 } 

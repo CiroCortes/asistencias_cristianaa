@@ -22,5 +22,14 @@ class MeetingService {
     });
   }
 
+  // Actualizar una reunión recurrente
+  Future<void> updateRecurringMeeting(String id, Map<String, dynamic> data) async {
+    try {
+      await _firestore.collection('recurring_meetings').doc(id).update(data);
+    } catch (e) {
+      throw Exception('Error al actualizar la reunión recurrente: $e');
+    }
+  }
+
   // TODO: Añadir métodos para actualizar y eliminar reuniones recurrentes
 } 

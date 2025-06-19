@@ -10,12 +10,13 @@ import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.
 import 'package:asistencias_app/presentation/screens/record_attendance/record_attendance_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:asistencias_app/core/providers/attendance_record_provider.dart';
+
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/detailed_reports_screen.dart';
+import 'package:asistencias_app/core/providers/location_provider.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -114,7 +115,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 );
               },
             ),
-            ListTile(
+            
+            if (PermissionUtils.canManageUsers(user))
+              ListTile(
+                leading: const Icon(Icons.people_alt),
+                title: const Text('Gestionar Usuarios'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserManagementScreen(),
+                    ),
+                  );
+                },
+              ),
+            if (PermissionUtils.canManageLocations(user))
+              ListTile(
+                leading: const Icon(Icons.location_on),
+                title: const Text('Gestionar Ubicaciones'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LocationsScreen(),
+                    ),
+                  );
+                },
+              ),
+            if (PermissionUtils.canViewReports(user))
+              ListTile(
+                leading: const Icon(Icons.description),
+                title: const Text('Reportes Detallados'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DetailedReportsScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
               leading: const Icon(Icons.info),
               title: const Text('Acerca de'),
               onTap: () {
@@ -288,8 +332,8 @@ class _HomeDashboardContent extends StatelessWidget {
                       maxY: [totalMembers, totalListeners, totalVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 5,
                       barTouchData: BarTouchData(enabled: true),
                       titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                        leftTitles: const AxisTitles(
+                          sideTitles:  SideTitles(showTitles: true, reservedSize: 28),
                         ),
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
@@ -307,8 +351,8 @@ class _HomeDashboardContent extends StatelessWidget {
                             },
                           ),
                         ),
-                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
                       barGroups: [
@@ -319,74 +363,169 @@ class _HomeDashboardContent extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 32),
+                _ComunaSectorAttendanceChart(records: records),
               ],
               const SizedBox(height: 24),
-              const Text(
-                'Acciones Rápidas',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  if (PermissionUtils.canManageUsers(user))
-                    _buildActionButton(
-                        context, 'Gestionar Usuarios', Icons.people_alt, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const UserManagementScreen(),
-                        ),
-                      );
-                    }),
-                  if (PermissionUtils.canManageLocations(user))
-                    _buildActionButton(
-                        context, 'Gestionar Ubicaciones', Icons.location_on, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LocationsScreen(),
-                        ),
-                      );
-                    }),
-                  if (PermissionUtils.canViewReports(user))
-                    _buildActionButton(
-                        context, 'Reportes Detallados', Icons.description, () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DetailedReportsScreen(),
-                            ),
-                          );
-                        }),
-                ],
-              ),
             ],
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildActionButton(
-      BuildContext context, String title, IconData icon, VoidCallback onPressed) {
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onPressed,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontSize: 16)),
-          ],
+// --- NUEVO WIDGET: _ComunaSectorAttendanceChart ---
+class _ComunaSectorAttendanceChart extends StatefulWidget {
+  final List<AttendanceRecordModel> records;
+  const _ComunaSectorAttendanceChart({required this.records});
+
+  @override
+  State<_ComunaSectorAttendanceChart> createState() => _ComunaSectorAttendanceChartState();
+}
+
+class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceChart> {
+  String? selectedCommuneId;
+  bool _initialized = false;
+  bool _loadingSectors = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initDataIfNeeded();
+    });
+  }
+
+  Future<void> _initDataIfNeeded() async {
+    if (_initialized) return;
+    final locationProvider = context.read<LocationProvider>();
+    if (locationProvider.cities.isEmpty) {
+      await locationProvider.loadCities();
+    }
+    if (locationProvider.communes.isEmpty && locationProvider.cities.isNotEmpty) {
+      await locationProvider.loadCommunes(locationProvider.cities.first.id);
+    }
+    if (locationProvider.locations.isEmpty && locationProvider.communes.isNotEmpty) {
+      await locationProvider.loadLocations(locationProvider.communes.first.id);
+    }
+    setState(() {
+      _initialized = true;
+      if (selectedCommuneId == null && locationProvider.communes.isNotEmpty) {
+        final communesWithSectors = locationProvider.communes.where((c) => locationProvider.locations.any((l) => l.communeId == c.id)).toList();
+        if (communesWithSectors.isNotEmpty) {
+          selectedCommuneId = communesWithSectors.first.id;
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locationProvider = context.watch<LocationProvider>();
+    final communes = locationProvider.communes;
+    final locations = locationProvider.locations;
+
+    if (!_initialized || _loadingSectors) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (communes.isEmpty) {
+      return const Text('No hay comunas registradas.');
+    }
+
+    final communesWithSectors = communes.where((c) => locations.any((l) => l.communeId == c.id)).toList();
+    if (communesWithSectors.isEmpty) {
+      return const Text('No hay comunas con sectores registrados.');
+    }
+
+    final sectors = locations.where((l) => l.communeId == selectedCommuneId).toList();
+
+    final Map<String, int> sectorAttendance = {};
+    for (final sector in sectors) {
+      final sectorRecords = widget.records.where((r) => r.sectorId == sector.id);
+      int total = 0;
+      for (final record in sectorRecords) {
+        total += record.attendedAttendeeIds.length + record.visitorCount;
+      }
+      sectorAttendance[sector.name] = total;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Asistencia Total por Sector (Comuna)',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
-      ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: selectedCommuneId,
+          decoration: const InputDecoration(
+            labelText: 'Selecciona una comuna',
+            border: OutlineInputBorder(),
+          ),
+          items: communesWithSectors.map((c) => DropdownMenuItem(
+            value: c.id,
+            child: Text(c.name),
+          )).toList(),
+          onChanged: (value) async {
+            setState(() {
+              selectedCommuneId = value;
+              _loadingSectors = true;
+            });
+            final commune = communesWithSectors.firstWhere((c) => c.id == value);
+            await context.read<LocationProvider>().loadLocations(commune.id);
+            setState(() {
+              _loadingSectors = false;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 260,
+          child: sectorAttendance.isEmpty
+              ? const Center(child: Text('No hay datos de asistencia para los sectores de esta comuna.'))
+              : BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: sectorAttendance.values.isNotEmpty ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
+                    barGroups: sectorAttendance.entries
+                        .toList()
+                        .asMap()
+                        .entries
+                        .map((entry) => BarChartGroupData(
+                              x: entry.key,
+                              barRods: [BarChartRodData(toY: entry.value.value.toDouble(), color: Colors.purple)],
+                            ))
+                        .toList(),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= sectorAttendance.keys.length) return const SizedBox.shrink();
+                            return Transform.rotate(
+                              angle: -0.7,
+                              child: Text(
+                                sectorAttendance.keys.elementAt(index),
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 } 

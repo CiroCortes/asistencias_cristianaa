@@ -7,6 +7,10 @@ import 'package:asistencias_app/data/models/recurring_meeting_model.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
+import 'package:asistencias_app/core/providers/location_provider.dart';
+import 'package:asistencias_app/data/models/location_models.dart';
+import 'package:asistencias_app/core/services/location_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecordAttendanceScreen extends StatefulWidget {
   const RecordAttendanceScreen({super.key});
@@ -16,18 +20,50 @@ class RecordAttendanceScreen extends StatefulWidget {
 }
 
 class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
+  String? _selectedMeetingId;
   RecurringMeetingModel? _selectedMeeting;
   DateTime _selectedDate = DateTime.now();
   List<String> _selectedAttendeeIds = [];
   int _visitorCount = 0;
   final AttendanceRecordService _attendanceRecordService = AttendanceRecordService();
 
+  // Para admin: selección de ciudad, comuna y sector
+  City? _selectedCity;
+  Commune? _selectedCommune;
+  Location? _selectedLocation;
+
+  String? _sectorName; // Para mostrar el nombre del sector asignado
+  bool _loadingSectorName = false;
+
   @override
   void initState() {
     super.initState();
-    // Opcional: Cargar los datos iniciales si no están en los providers
-    // context.read<MeetingProvider>().loadMeetings(); // si fuera necesario
-    // context.read<AttendeeProvider>().loadAttendees(); // si fuera necesario
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.user;
+    final locationProvider = context.read<LocationProvider>();
+    if (userProvider.isAdmin) {
+      locationProvider.loadCities();
+    } else if (currentUser != null && currentUser.sectorId != null) {
+      _fetchSectorName(currentUser.sectorId!);
+    }
+  }
+
+  Future<void> _fetchSectorName(String sectorId) async {
+    setState(() { _loadingSectorName = true; });
+    try {
+      final doc = await FirebaseFirestore.instance.collection('locations').doc(sectorId).get();
+      if (doc.exists) {
+        setState(() {
+          _sectorName = doc.data()!["name"] ?? sectorId;
+        });
+      } else {
+        setState(() { _sectorName = sectorId; });
+      }
+    } catch (_) {
+      setState(() { _sectorName = sectorId; });
+    } finally {
+      setState(() { _loadingSectorName = false; });
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -98,15 +134,15 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     }
 
     try {
-      // Para administradores, usar el sector del primer asistente seleccionado
       String sectorId;
       if (userProvider.isAdmin) {
-        final attendeeProvider = context.read<AttendeeProvider>();
-        final selectedAttendee = attendeeProvider.attendees.firstWhere(
-          (a) => a.id == _selectedAttendeeIds.first,
-          orElse: () => throw Exception('No se encontró el asistente seleccionado'),
-        );
-        sectorId = selectedAttendee.sectorId;
+        if (_selectedLocation == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor selecciona un sector.')),
+          );
+          return;
+        }
+        sectorId = _selectedLocation!.id;
       } else {
         sectorId = currentUser.sectorId!;
       }
@@ -130,6 +166,11 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
         _selectedAttendeeIds = [];
         _visitorCount = 0;
         _selectedDate = DateTime.now();
+        if (userProvider.isAdmin) {
+          _selectedCity = null;
+          _selectedCommune = null;
+          _selectedLocation = null;
+        }
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,23 +184,24 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     final meetingProvider = context.watch<MeetingProvider>();
     final attendeeProvider = context.watch<AttendeeProvider>();
     final userProvider = context.watch<UserProvider>();
+    final locationProvider = context.watch<LocationProvider>();
     final currentUser = userProvider.user;
 
+    // --- Lógica de asistentes filtrados ---
     List<AttendeeModel> filteredAttendees = [];
     if (currentUser != null) {
       if (userProvider.isAdmin) {
-        filteredAttendees = attendeeProvider.attendees;
+        if (_selectedLocation != null) {
+          filteredAttendees = attendeeProvider.attendees.where((att) => att.sectorId == _selectedLocation!.id).toList();
+        }
       } else if (currentUser.sectorId != null) {
-        filteredAttendees = attendeeProvider.attendees
-            .where((att) => att.sectorId == currentUser.sectorId)
-            .toList();
+        filteredAttendees = attendeeProvider.attendees.where((att) => att.sectorId == currentUser.sectorId).toList();
       }
     }
 
-    if (meetingProvider.isLoading || attendeeProvider.isLoading) {
+    if (meetingProvider.isLoading || attendeeProvider.isLoading || locationProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (meetingProvider.errorMessage != null) {
       return Center(child: Text('Error al cargar eventos: ${meetingProvider.errorMessage}'));
     }
@@ -176,26 +218,82 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- Dropdowns de ciudad, comuna y sector solo para admin ---
+            if (userProvider.isAdmin) ...[
+              const Text('Seleccionar Ciudad:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<City>(
+                decoration: const InputDecoration(labelText: 'Ciudad', border: OutlineInputBorder()),
+                value: _selectedCity,
+                items: locationProvider.cities.map((city) => DropdownMenuItem<City>(value: city, child: Text(city.name))).toList(),
+                onChanged: (city) async {
+                  setState(() {
+                    _selectedCity = city;
+                    _selectedCommune = null;
+                    _selectedLocation = null;
+                  });
+                  if (city != null) await locationProvider.loadCommunes(city.id);
+                },
+              ),
+              const SizedBox(height: 12),
+              const Text('Seleccionar Comuna:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<Commune>(
+                decoration: const InputDecoration(labelText: 'Comuna', border: OutlineInputBorder()),
+                value: _selectedCommune,
+                items: locationProvider.communes.map((commune) => DropdownMenuItem<Commune>(value: commune, child: Text(commune.name))).toList(),
+                onChanged: (commune) async {
+                  setState(() {
+                    _selectedCommune = commune;
+                    _selectedLocation = null;
+                  });
+                  if (commune != null) await locationProvider.loadLocations(commune.id);
+                },
+              ),
+              const SizedBox(height: 12),
+              const Text('Seleccionar Sector:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<Location>(
+                decoration: const InputDecoration(labelText: 'Sector', border: OutlineInputBorder()),
+                value: _selectedLocation,
+                items: locationProvider.locations.map((loc) => DropdownMenuItem<Location>(value: loc, child: Text(loc.name))).toList(),
+                onChanged: (loc) {
+                  setState(() {
+                    _selectedLocation = loc;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+            ] else if (currentUser != null && currentUser.sectorId != null) ...[
+              // Mostrar info del sector si se desea
+              const Text('Sector asignado:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _loadingSectorName
+                ? const CircularProgressIndicator()
+                : Text(_sectorName ?? currentUser.sectorId ?? '', style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 20),
+            ],
             const Text(
               'Seleccionar Evento Recurrente:',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            DropdownButtonFormField<RecurringMeetingModel>(
+            DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'Evento',
                 border: OutlineInputBorder(),
               ),
-              value: _selectedMeeting,
+              value: _selectedMeetingId,
               items: meetingProvider.recurringMeetings.map((meeting) {
                 return DropdownMenuItem(
-                  value: meeting,
+                  value: meeting.id,
                   child: Text(meeting.name),
                 );
               }).toList(),
-              onChanged: (newValue) {
+              onChanged: (newId) {
                 setState(() {
-                  _selectedMeeting = newValue;
+                  _selectedMeetingId = newId;
+                  _selectedMeeting = meetingProvider.recurringMeetings.firstWhere((m) => m.id == newId);
                 });
               },
               validator: (value) {

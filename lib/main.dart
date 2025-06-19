@@ -16,6 +16,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:asistencias_app/firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,16 @@ class AsistenciasApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
+        supportedLocales: const [
+          Locale('es', ''), // Español
+          Locale('en', ''), // Inglés (opcional)
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        locale: const Locale('es', ''), // Fuerza el locale a español
         initialRoute: '/',
         routes: {
           '/': (context) => const AuthWrapper(),

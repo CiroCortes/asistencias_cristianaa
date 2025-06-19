@@ -138,7 +138,6 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
                 },
               ),
               const SizedBox(height: 16),
-              // Selector de Días de la Semana
               const Text('Días de la Semana:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Wrap(
@@ -178,7 +177,6 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
                 },
               ),
               const SizedBox(height: 16),
-              // Selectores de Ubicación en cascada
               const Text('Ubicación:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               DropdownButtonFormField<City>(
@@ -245,7 +243,7 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
                   });
                 },
                 validator: (value) {
-                  if (value == null) return 'Selecciona una localidad';
+                  if (value == null) return 'Selecciona un Sector';
                   return null;
                 },
               ),

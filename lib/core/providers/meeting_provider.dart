@@ -49,5 +49,20 @@ class MeetingProvider with ChangeNotifier {
     }
   }
 
+  // Actualizar una reunión recurrente
+  Future<void> updateRecurringMeeting(String id, Map<String, dynamic> data) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _meetingService.updateRecurringMeeting(id, data);
+    } catch (e) {
+      _errorMessage = 'Error al actualizar la reunión recurrente: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // TODO: Añadir métodos para actualizar y eliminar si se requieren en el provider
 } 

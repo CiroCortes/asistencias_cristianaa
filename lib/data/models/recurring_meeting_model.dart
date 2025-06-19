@@ -27,7 +27,7 @@ class RecurringMeetingModel {
     return RecurringMeetingModel(
       id: snapshot.id,
       name: data?['name'],
-      daysOfWeek: List<String>.from(data?['daysOfWeek'] ?? []),
+      daysOfWeek: (data?['daysOfWeek'] as List?)?.map((e) => e.toString()).toList() ?? [],
       time: data?['time'],
       locationId: data?['locationId'],
       createdByUserId: data?['createdByUserId'],
