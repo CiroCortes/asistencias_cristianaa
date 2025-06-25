@@ -34,10 +34,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showEditUserDialog([UserModel? userToEdit]) {
-    bool _isApproved = userToEdit?.isApproved ?? false;
-    String _selectedRole = userToEdit?.role ?? 'normal_user';
-    final TextEditingController _displayNameController = TextEditingController(text: userToEdit?.displayName ?? '');
-    final TextEditingController _emailController = TextEditingController(text: userToEdit?.email ?? '');
+    bool isApproved = userToEdit?.isApproved ?? false;
+    String selectedRole = userToEdit?.role ?? 'normal_user';
+    final TextEditingController displayNameController = TextEditingController(text: userToEdit?.displayName ?? '');
+    final TextEditingController emailController = TextEditingController(text: userToEdit?.email ?? '');
 
     final locationProvider = context.read<LocationProvider>();
     if (userToEdit?.sectorId != null) {
@@ -76,37 +76,37 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
-                      controller: _displayNameController,
+                      controller: displayNameController,
                       decoration: const InputDecoration(labelText: 'Nombre de Usuario'),
                       readOnly: userToEdit != null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
-                      controller: _emailController,
+                      controller: emailController,
                       decoration: const InputDecoration(labelText: 'Correo Electrónico'),
                       readOnly: userToEdit != null,
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       decoration: const InputDecoration(labelText: 'Rol'),
-                      value: _selectedRole,
+                      value: selectedRole,
                       items: const [
                         DropdownMenuItem(value: 'admin', child: Text('Administrador')),
                         DropdownMenuItem(value: 'normal_user', child: Text('Usuario Normal')),
                       ],
                       onChanged: (String? newValue) {
                         setStateInDialog(() {
-                          _selectedRole = newValue!;
+                          selectedRole = newValue!;
                         });
                       },
                     ),
                     const SizedBox(height: 10),
                     CheckboxListTile(
                       title: const Text('Aprobado'),
-                      value: _isApproved,
+                      value: isApproved,
                       onChanged: (bool? newValue) {
                         setStateInDialog(() {
-                          _isApproved = newValue!;
+                          isApproved = newValue!;
                         });
                       },
                     ),
@@ -181,10 +181,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
                     final updatedUser = UserModel(
                       uid: userToEdit?.uid ?? '',
-                      email: _emailController.text,
-                      displayName: _displayNameController.text,
-                      role: _selectedRole,
-                      isApproved: _isApproved,
+                      email: emailController.text,
+                      displayName: displayNameController.text,
+                      role: selectedRole,
+                      isApproved: isApproved,
                       sectorId: _selectedLocation!.id,
                     );
 
@@ -327,9 +327,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "user_management_fab",
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
+            const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
           );
         },
         child: const Icon(Icons.add),

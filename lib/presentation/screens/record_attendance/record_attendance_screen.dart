@@ -9,7 +9,6 @@ import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
-import 'package:asistencias_app/core/services/location_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecordAttendanceScreen extends StatefulWidget {
@@ -38,14 +37,16 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    final userProvider = context.read<UserProvider>();
-    final currentUser = userProvider.user;
-    final locationProvider = context.read<LocationProvider>();
-    if (userProvider.isAdmin) {
-      locationProvider.loadCities();
-    } else if (currentUser != null && currentUser.sectorId != null) {
-      _fetchSectorName(currentUser.sectorId!);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      final currentUser = userProvider.user;
+      final locationProvider = context.read<LocationProvider>();
+      if (userProvider.isAdmin) {
+        locationProvider.loadCities();
+      } else if (currentUser != null && currentUser.sectorId != null) {
+        _fetchSectorName(currentUser.sectorId!);
+      }
+    });
   }
 
   Future<void> _fetchSectorName(String sectorId) async {
@@ -199,6 +200,22 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       }
     }
 
+    // Validar que los valores seleccionados existen en las listas disponibles
+    if (userProvider.isAdmin) {
+      if (_selectedCity != null && !locationProvider.cities.any((city) => city.id == _selectedCity!.id)) {
+        _selectedCity = null;
+        _selectedCommune = null;
+        _selectedLocation = null;
+      }
+      if (_selectedCommune != null && !locationProvider.communes.any((commune) => commune.id == _selectedCommune!.id)) {
+        _selectedCommune = null;
+        _selectedLocation = null;
+      }
+      if (_selectedLocation != null && !locationProvider.locations.any((location) => location.id == _selectedLocation!.id)) {
+        _selectedLocation = null;
+      }
+    }
+
     if (meetingProvider.isLoading || attendeeProvider.isLoading || locationProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -311,10 +328,10 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
               onTap: () => _selectDate(context),
               child: AbsorbPointer(
                 child: TextFormField(
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Fecha',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: const Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
                   ),
                   controller: TextEditingController(
                     text: '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedDate.hour}:${_selectedDate.minute.toString().padLeft(2, '0')}',

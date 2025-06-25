@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
-import 'package:asistencias_app/core/utils/permission_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
@@ -21,9 +20,9 @@ class UserDashboardScreen extends StatefulWidget {
 class _UserDashboardScreenState extends State<UserDashboardScreen> {
   int _selectedIndex = 0;
 
-  static List<Widget> _widgetOptions = <Widget>[
+  static final List<Widget> _widgetOptions = <Widget>[
     // 0: Contenido del Tab de Inicio (Dashboard actual)
-    _HomeDashboardContent(),
+    const _HomeDashboardContent(),
     // 1: Contenido del Tab de Eventos (para visualizar eventos creados por admin)
     const AdminEventsTab(isAdminView: false), // Reutilizar AdminEventsTab para vista de usuario
     // 2: Contenido del Tab de Ingresar Asistencias
@@ -61,7 +60,40 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          return;
+        }
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar Salida'),
+            content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () {
+                   Navigator.of(context).pop(true);
+                  // Cierra la app
+                  // SystemNavigator.pop();
+                },
+                child: const Text('Salir'),
+              ),
+            ],
+          ),
+        ).then((exit) {
+          if (exit ?? false) {
+             // Cierra la app
+             // SystemNavigator.pop();
+          }
+        });
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Panel de Usuario'),
         leading: Builder(
@@ -74,7 +106,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             );
           },
         ),
-        actions: [
+        actions: const [
           // Este botón de cerrar sesión ahora está en el Drawer, lo podemos quitar de aquí si quieres
           // IconButton(
           //   icon: const Icon(Icons.logout),
@@ -102,17 +134,17 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
                         : null,
                     child: user.photoUrl == null
                         ? Text(user.displayName[0].toUpperCase(),
-                            style: TextStyle(fontSize: 24, color: Colors.white))
+                            style: const TextStyle(fontSize: 24, color: Colors.white))
                         : null,
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
                     user.displayName,
-                    style: TextStyle(color: Colors.white, fontSize: 18),
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
                   ),
                   Text(
                     user.email,
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
@@ -145,7 +177,39 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               leading: const Icon(Icons.logout),
               title: const Text('Cerrar Sesión'),
               onTap: () async {
+                // Cierra el drawer
                 Navigator.pop(context);
+
+                // Muestra un diálogo de carga
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return const Dialog(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(width: 20),
+                            Text("Cerrando sesión..."),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                // Espera 2 segundos para la animación
+                await Future.delayed(const Duration(seconds: 2));
+
+                // Cierra el diálogo antes de desloguear
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+                
+                // Ejecuta el cierre de sesión
                 await userProvider.signOut();
               },
             ),
@@ -180,13 +244,13 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
-    );
+    ));
   }
 }
 
 // Extraer el contenido del dashboard original en un widget separado
 class _HomeDashboardContent extends StatelessWidget {
-  const _HomeDashboardContent({super.key});
+  const _HomeDashboardContent();
 
   @override
   Widget build(BuildContext context) {
@@ -305,10 +369,10 @@ class _HomeDashboardContent extends StatelessWidget {
                                   maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
                                   barGroups: weekAttendance.entries.map((e) => BarChartGroupData(x: e.key, barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.blue)])).toList(),
                                   titlesData: FlTitlesData(
-                                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
                                     bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('S${value.toInt()}'))),
-                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                   ),
                                   borderData: FlBorderData(show: false),
                                 ),

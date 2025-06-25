@@ -3,13 +3,15 @@ import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/core/services/attendee_service.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async'; // Import for StreamSubscription
 
 class AttendeeProvider with ChangeNotifier {
   final AttendeeService _attendeeService = AttendeeService();
   List<AttendeeModel> _attendees = [];
   bool _isLoading = false;
   String? _errorMessage;
-  UserProvider _userProvider;
+  final UserProvider _userProvider;
+  StreamSubscription? _attendeesSubscription; // Variable to hold the subscription
 
   List<AttendeeModel> get attendees => _attendees;
   bool get isLoading => _isLoading;
@@ -49,7 +51,10 @@ class AttendeeProvider with ChangeNotifier {
       return;
     }
 
-    attendeesStream.listen(
+    // Cancel any previous subscription
+    _attendeesSubscription?.cancel();
+
+    _attendeesSubscription = attendeesStream.listen(
       (attendeeList) {
         _attendees = attendeeList;
         _isLoading = false;
@@ -97,6 +102,7 @@ class AttendeeProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _attendeesSubscription?.cancel(); // Cancel the subscription on dispose
     _userProvider.removeListener(_onUserChange);
     super.dispose();
   }

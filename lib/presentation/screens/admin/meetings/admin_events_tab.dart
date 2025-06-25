@@ -99,6 +99,7 @@ class AdminEventsTab extends StatelessWidget {
       ),
       floatingActionButton: isAdminView
           ? FloatingActionButton(
+              heroTag: "admin_events_fab",
               onPressed: () {
                 Navigator.push(
                   context,

@@ -41,7 +41,10 @@ class _LocationsScreenState extends State<LocationsScreen> {
     final allLocations = await locationProvider.loadAllLocations(allCommunes);
     if (!mounted) return;
     locationProvider.setLocations = allLocations;
-    setState(() {});
+    
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _resetForm() {

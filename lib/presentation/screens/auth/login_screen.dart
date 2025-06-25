@@ -49,9 +49,11 @@ class _LoginScreenState extends State<LoginScreen> {
         // No es necesario navegar manualmente
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -78,9 +80,11 @@ class _LoginScreenState extends State<LoginScreen> {
         // No es necesario navegar manualmente
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

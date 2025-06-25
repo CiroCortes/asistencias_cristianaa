@@ -19,7 +19,7 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
   final _nameController = TextEditingController();
   final _timeController = TextEditingController();
 
-  List<String> _selectedDays = [];
+  final List<String> _selectedDays = [];
   City? _selectedCity;
   Commune? _selectedCommune;
   Location? _selectedLocation;

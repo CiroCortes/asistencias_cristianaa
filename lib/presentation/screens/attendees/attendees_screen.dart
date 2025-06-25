@@ -84,7 +84,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       name: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
       lastName: _lastNameController.text.trim().isEmpty ? null : _lastNameController.text.trim(),
       type: _selectedType,
-      sectorId: assignedSectorId!,
+      sectorId: assignedSectorId,
       contactInfo: _contactInfoController.text.trim().isEmpty ? null : _contactInfoController.text.trim(),
       createdAt: existingAttendee?.createdAt ?? DateTime.now(),
       createdByUserId: existingAttendee?.createdByUserId ?? currentUser.uid,
@@ -109,7 +109,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         name: attendeeToSave.name,
         lastName: attendeeToSave.lastName,
         type: _selectedType,
-        sectorId: assignedSectorId!,
+        sectorId: assignedSectorId,
         contactInfo: attendeeToSave.contactInfo,
         createdAt: existingAttendee.createdAt,
         createdByUserId: existingAttendee.createdByUserId,
@@ -130,50 +130,65 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
   }
 
   void _showAddEditAttendeeDialog([AttendeeModel? attendeeToEdit]) {
-    _formKey.currentState?.reset();
-    _nameController.clear();
-    _lastNameController.clear();
-    _contactInfoController.clear();
-
     final userProvider = context.read<UserProvider>();
+    final locationProvider = context.read<LocationProvider>();
+    final attendeeProvider = context.read<AttendeeProvider>();
 
+    // Solo admin puede crear/editar asistentes para cualquier sector
+    if (!userProvider.isAdmin && userProvider.user?.sectorId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No tienes permisos para gestionar asistentes.')),
+      );
+      return;
+    }
+
+    // Reset form state
     if (attendeeToEdit != null) {
       _nameController.text = attendeeToEdit.name ?? '';
       _lastNameController.text = attendeeToEdit.lastName ?? '';
       _contactInfoController.text = attendeeToEdit.contactInfo ?? '';
       _selectedType = attendeeToEdit.type;
       _isAttendeeActive = attendeeToEdit.isActive;
-
-      if (userProvider.isAdmin && attendeeToEdit.sectorId != null) {
-        context.read<LocationProvider>().loadCities().then((_) {
-          final locationProvider = context.read<LocationProvider>();
-          final initialLocation = locationProvider.locations.firstWhereOrNull(
-              (loc) => loc.id == attendeeToEdit.sectorId);
-          if (initialLocation != null) {
-            setState(() {
-              _selectedLocation = initialLocation;
-              _selectedCommune = locationProvider.communes.firstWhereOrNull(
-                  (comm) => comm.id == initialLocation.communeId);
-              _selectedCity = locationProvider.cities.firstWhereOrNull(
-                  (city) => city.id == _selectedCommune?.cityId);
-            });
-            if (_selectedCommune != null) {
-              locationProvider.loadCommunes(_selectedCity!.id).then((_) {
-                locationProvider.loadLocations(_selectedCommune!.id);
-              });
+      // Solo admin puede cambiar el sector
+      if (userProvider.isAdmin) {
+        // Find and set location data for editing
+        final location = locationProvider.locations.firstWhereOrNull((l) => l.id == attendeeToEdit.sectorId);
+        if (location != null) {
+          _selectedLocation = location;
+          final commune = locationProvider.communes.firstWhereOrNull((c) => c.id == location.communeId);
+          if (commune != null) {
+            _selectedCommune = commune;
+            final city = locationProvider.cities.firstWhereOrNull((c) => c.id == commune.cityId);
+            if (city != null) {
+              _selectedCity = city;
             }
           }
-        });
+        }
       }
     } else {
+      _nameController.clear();
+      _lastNameController.clear();
+      _contactInfoController.clear();
       _selectedType = 'member';
-      if (userProvider.isAdmin) {
-        setState(() {
-          _selectedCity = null;
-          _selectedCommune = null;
-          _selectedLocation = null;
-        });
-        context.read<LocationProvider>().loadCities();
+      _isAttendeeActive = true;
+      _selectedCity = null;
+      _selectedCommune = null;
+      _selectedLocation = null;
+    }
+
+    // Validar que los valores seleccionados existen en las listas disponibles
+    if (userProvider.isAdmin) {
+      if (_selectedCity != null && !locationProvider.cities.any((city) => city.id == _selectedCity!.id)) {
+        _selectedCity = null;
+        _selectedCommune = null;
+        _selectedLocation = null;
+      }
+      if (_selectedCommune != null && !locationProvider.communes.any((commune) => commune.id == _selectedCommune!.id)) {
+        _selectedCommune = null;
+        _selectedLocation = null;
+      }
+      if (_selectedLocation != null && !locationProvider.locations.any((location) => location.id == _selectedLocation!.id)) {
+        _selectedLocation = null;
       }
     }
 
@@ -456,6 +471,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "attendees_fab",
         onPressed: () => _showAddEditAttendeeDialog(),
         icon: const Icon(Icons.person_add),
         label: const Text('Añadir Asistente'),

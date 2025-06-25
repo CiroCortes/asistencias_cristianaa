@@ -27,31 +27,58 @@ class LocationProvider with ChangeNotifier {
 
   // Cargar ciudades
   Future<void> loadCities() async {
+    if (_isLoading) return; // Prevenir múltiples cargas simultáneas
+    
     _isLoading = true;
     notifyListeners();
     print('Cargando ciudades...');
-    _cities = await _locationService.getCities();
-    print('Ciudades cargadas: ${_cities.length}');
-    _isLoading = false;
-    notifyListeners();
+    
+    try {
+      _cities = await _locationService.getCities();
+      print('Ciudades cargadas: ${_cities.length}');
+    } catch (e) {
+      print('Error cargando ciudades: $e');
+      _cities = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Cargar comunas de una ciudad
   Future<void> loadCommunes(String cityId) async {
+    if (_isLoading) return; // Prevenir múltiples cargas simultáneas
+    
     _isLoading = true;
     notifyListeners();
-    _communes = await _locationService.getCommunesByCity(cityId);
-    _isLoading = false;
-    notifyListeners();
+    
+    try {
+      _communes = await _locationService.getCommunesByCity(cityId);
+    } catch (e) {
+      print('Error cargando comunas: $e');
+      _communes = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Cargar locaciones de una comuna
   Future<void> loadLocations(String communeId) async {
+    if (_isLoading) return; // Prevenir múltiples cargas simultáneas
+    
     _isLoading = true;
     notifyListeners();
-    _locations = await _locationService.getLocationsByCommune(communeId);
-    _isLoading = false;
-    notifyListeners();
+    
+    try {
+      _locations = await _locationService.getLocationsByCommune(communeId);
+    } catch (e) {
+      print('Error cargando locaciones: $e');
+      _locations = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Seleccionar ciudad
@@ -59,17 +86,18 @@ class LocationProvider with ChangeNotifier {
     _selectedCity = city;
     _selectedCommune = null;
     _selectedLocation = null;
-    await loadCommunes(city.id);
-    // No es necesario cargar locations aquí, se hará al seleccionar comuna
     notifyListeners();
+    
+    await loadCommunes(city.id);
   }
 
   // Seleccionar comuna
   Future<void> selectCommune(Commune commune) async {
     _selectedCommune = commune;
     _selectedLocation = null;
-    await loadLocations(commune.id);
     notifyListeners();
+    
+    await loadLocations(commune.id);
   }
 
   // Seleccionar locación
@@ -207,27 +235,61 @@ class LocationProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // --- NUEVO: Cargar todas las comunas de todas las ciudades ---
+  // Cargar todas las comunas de todas las ciudades
   Future<List<Commune>> loadAllCommunes() async {
-    List<Commune> allCommunes = [];
-    for (final city in _cities) {
-      final communes = await _locationService.getCommunesByCity(city.id);
-      allCommunes.addAll(communes);
+    if (_isLoading) return _communes;
+    
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      final allCommunes = <Commune>[];
+      for (final city in _cities) {
+        final cityCommunes = await _locationService.getCommunesByCity(city.id);
+        allCommunes.addAll(cityCommunes);
+      }
+      return allCommunes;
+    } catch (e) {
+      print('Error cargando todas las comunas: $e');
+      return [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return allCommunes;
   }
 
-  // --- NUEVO: Cargar todas las localidades de todas las comunas ---
+  // Cargar todas las ubicaciones de todas las comunas
   Future<List<Location>> loadAllLocations(List<Commune> communes) async {
-    List<Location> allLocations = [];
-    for (final commune in communes) {
-      final locations = await _locationService.getLocationsByCommune(commune.id);
-      allLocations.addAll(locations);
+    if (_isLoading) return _locations;
+    
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      final allLocations = <Location>[];
+      for (final commune in communes) {
+        final communeLocations = await _locationService.getLocationsByCommune(commune.id);
+        allLocations.addAll(communeLocations);
+      }
+      return allLocations;
+    } catch (e) {
+      print('Error cargando todas las ubicaciones: $e');
+      return [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return allLocations;
   }
 
-  // --- NUEVO: Setters públicos para communes y locations (solo para uso controlado) ---
-  set setCommunes(List<Commune> communes) => _communes = communes;
-  set setLocations(List<Location> locations) => _locations = locations;
+  // Setter para communes (necesario para el reporte)
+  set setCommunes(List<Commune> communes) {
+    _communes = communes;
+    notifyListeners();
+  }
+
+  // Setter para locations (necesario para el reporte)
+  set setLocations(List<Location> locations) {
+    _locations = locations;
+    notifyListeners();
+  }
 } 

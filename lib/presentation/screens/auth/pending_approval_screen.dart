@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:asistencias_app/core/services/auth_service.dart';
 
 class PendingApprovalScreen extends StatefulWidget {

@@ -28,7 +28,7 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
     final attendanceRecordService = AttendanceRecordService();
 
     // Cargar comunas y sectores al seleccionar ciudad
-    Future<void> _onCityChanged(String? cityId) async {
+    Future<void> onCityChanged(String? cityId) async {
       setState(() {
         selectedCityId = cityId;
         selectedCommuneId = null;
@@ -44,7 +44,7 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
       }
     }
     // Cargar sectores al seleccionar comuna
-    Future<void> _onCommuneChanged(String? communeId) async {
+    Future<void> onCommuneChanged(String? communeId) async {
       setState(() {
         selectedCommuneId = communeId;
         selectedSectorId = null;
@@ -161,14 +161,14 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
                         value: selectedCityId,
                         hint: const Text('Ciudad'),
                         items: cities.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                        onChanged: (v) => _onCityChanged(v),
+                        onChanged: (v) => onCityChanged(v),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         value: selectedCommuneId,
                         hint: const Text('Comuna'),
                         items: communes.where((c) => selectedCityId == null || c.cityId == selectedCityId).map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-                        onChanged: (v) => _onCommuneChanged(v),
+                        onChanged: (v) => onCommuneChanged(v),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
@@ -218,10 +218,10 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
                                   maxY: yearWeekAttendance.values.isNotEmpty ? (yearWeekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
                                   barGroups: yearWeekAttendance.entries.map((e) => BarChartGroupData(x: e.key, barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.purple)])).toList(),
                                   titlesData: FlTitlesData(
-                                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
                                     bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('S${value.toInt()}'))),
-                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                   ),
                                   borderData: FlBorderData(show: false),
                                 ),
@@ -248,10 +248,10 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
                             maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
                             barGroups: weekAttendance.entries.map((e) => BarChartGroupData(x: e.key, barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.blue)])).toList(),
                             titlesData: FlTitlesData(
-                              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
                               bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('S${value.toInt()}'))),
-                              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                             ),
                             borderData: FlBorderData(show: false),
                           ),
@@ -282,10 +282,10 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
                                 maxY: cityEntry.value.values.isNotEmpty ? (cityEntry.value.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
                                 barGroups: cityEntry.value.entries.map((e) => BarChartGroupData(x: cityEntry.value.keys.toList().indexOf(e.key), barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.orange)])).toList(),
                                 titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
                                   bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text(cityEntry.value.keys.elementAt(value.toInt())))),
-                                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
                                 borderData: FlBorderData(show: false),
                               ),
@@ -318,10 +318,10 @@ class _DetailedReportsScreenState extends State<DetailedReportsScreen> {
                                 maxY: communeEntry.value.values.isNotEmpty ? (communeEntry.value.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
                                 barGroups: communeEntry.value.entries.map((e) => BarChartGroupData(x: communeEntry.value.keys.toList().indexOf(e.key), barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.green)])).toList(),
                                 titlesData: FlTitlesData(
-                                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
                                   bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text(communeEntry.value.keys.elementAt(value.toInt())))),
-                                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                 ),
                                 borderData: FlBorderData(show: false),
                               ),
