@@ -1020,9 +1020,8 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final index = group.x.toInt();
                           
-                          // Verificación robusta de índices
                           if (!hasValidData || index < 0 || index >= entries.length) {
-                            return null; // No mostrar tooltip si no hay datos válidos
+                            return null;
                           }
                           
                           final value = entries[index].value;
@@ -1042,7 +1041,7 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                         .entries
                         .map((entry) => BarChartGroupData(
                               x: entry.key,
-                              showingTooltipIndicators: hasValidData ? [0] : [], // Solo mostrar si hay datos válidos
+                              showingTooltipIndicators: hasValidData ? [0] : [], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: entry.value.value.toDouble(), 
                                 color: Colors.purple[700],

@@ -20,11 +20,17 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
   final _lastNameController = TextEditingController();
   final _contactInfoController = TextEditingController();
 
+  // Variables para el formulario de agregar/editar
   City? _selectedCity;
   Commune? _selectedCommune;
   Location? _selectedLocation;
   String _selectedType = 'member';
   bool _isAttendeeActive = true;
+
+  // Variables para filtros de la lista principal (solo admin)
+  City? _filterCity;
+  Commune? _filterCommune;
+  Location? _filterLocation;
 
   @override
   void initState() {
@@ -381,6 +387,107 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       ),
       body: Column(
         children: [
+          // Filtros para administradores
+          if (userProvider.isAdmin) 
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Consumer<LocationProvider>(
+                builder: (context, locationProvider, child) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.filter_list, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Filtros',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _filterCity = null;
+                                _filterCommune = null;
+                                _filterLocation = null;
+                              });
+                            },
+                            child: const Text('Limpiar'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<City>(
+                        decoration: const InputDecoration(
+                          labelText: 'Ciudad',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.location_city),
+                        ),
+                        value: _filterCity,
+                        items: locationProvider.cities.map((city) {
+                          return DropdownMenuItem(value: city, child: Text(city.name));
+                        }).toList(),
+                        onChanged: (City? newValue) {
+                          setState(() {
+                            _filterCity = newValue;
+                            _filterCommune = null;
+                            _filterLocation = null;
+                          });
+                          if (newValue != null) {
+                            locationProvider.loadCommunes(newValue.id);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<Commune>(
+                        decoration: const InputDecoration(
+                          labelText: 'Comuna',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.place),
+                        ),
+                        value: _filterCommune,
+                        items: locationProvider.communes
+                            .where((commune) => _filterCity == null || commune.cityId == _filterCity!.id)
+                            .map((commune) {
+                          return DropdownMenuItem(value: commune, child: Text(commune.name));
+                        }).toList(),
+                        onChanged: (Commune? newValue) {
+                          setState(() {
+                            _filterCommune = newValue;
+                            _filterLocation = null;
+                          });
+                          if (newValue != null) {
+                            locationProvider.loadLocations(newValue.id);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<Location>(
+                        decoration: const InputDecoration(
+                          labelText: 'Sector',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.location_on),
+                        ),
+                        value: _filterLocation,
+                        items: locationProvider.locations
+                            .where((location) => _filterCommune == null || location.communeId == _filterCommune!.id)
+                            .map((location) {
+                          return DropdownMenuItem(value: location, child: Text(location.name));
+                        }).toList(),
+                        onChanged: (Location? newValue) {
+                          setState(() {
+                            _filterLocation = newValue;
+                          });
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           Expanded(
             child: Consumer<AttendeeProvider>(
               builder: (context, attendeeProvider, child) {
@@ -396,6 +503,39 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                 List<AttendeeModel> displayAttendees = attendeeProvider.attendees
                     .where((a) => a.isActive)
                     .toList();
+
+                // Aplicar filtros para administradores
+                if (userProvider.isAdmin) {
+                  if (_filterLocation != null) {
+                    displayAttendees = displayAttendees
+                        .where((a) => a.sectorId == _filterLocation!.id)
+                        .toList();
+                  } else if (_filterCommune != null) {
+                    // Si no hay sector específico pero sí comuna, filtrar por todos los sectores de esa comuna
+                    final locationProvider = context.read<LocationProvider>();
+                    final sectorsInCommune = locationProvider.locations
+                        .where((location) => location.communeId == _filterCommune!.id)
+                        .map((location) => location.id)
+                        .toList();
+                    displayAttendees = displayAttendees
+                        .where((a) => sectorsInCommune.contains(a.sectorId))
+                        .toList();
+                  } else if (_filterCity != null) {
+                    // Si no hay comuna específica pero sí ciudad, filtrar por todas las comunas de esa ciudad
+                    final locationProvider = context.read<LocationProvider>();
+                    final communesInCity = locationProvider.communes
+                        .where((commune) => commune.cityId == _filterCity!.id)
+                        .map((commune) => commune.id)
+                        .toList();
+                    final sectorsInCity = locationProvider.locations
+                        .where((location) => communesInCity.contains(location.communeId))
+                        .map((location) => location.id)
+                        .toList();
+                    displayAttendees = displayAttendees
+                        .where((a) => sectorsInCity.contains(a.sectorId))
+                        .toList();
+                  }
+                }
 
                 if (displayAttendees.isEmpty) {
                   return const Center(

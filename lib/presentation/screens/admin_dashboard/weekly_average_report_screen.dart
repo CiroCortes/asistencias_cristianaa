@@ -37,6 +37,11 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
     final allLocations = await locationProvider.loadAllLocations(allCommunes);
     locationProvider.setLocations = allLocations;
 
+    // Seleccionar automáticamente la primera ruta si no hay ninguna seleccionada
+    if (allCommunes.isNotEmpty && selectedCommuneId == null) {
+      selectedCommuneId = allCommunes.first.id;
+    }
+
     if (mounted) {
       setState(() {
         _isLoading = false;

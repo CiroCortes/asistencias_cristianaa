@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
+import 'package:asistencias_app/data/models/location_models.dart';
 
 class TTLWeeklyReportScreen extends StatefulWidget {
   const TTLWeeklyReportScreen({super.key});
@@ -15,6 +16,7 @@ class TTLWeeklyReportScreen extends StatefulWidget {
 class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
   int selectedYear = DateTime.now().year;
   String? selectedMonth;
+  String? selectedCommuneId; // null significa "Todas las rutas"
   bool _isLoading = true;
 
   @override
@@ -31,6 +33,14 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
     if (locationProvider.cities.isEmpty) {
       await locationProvider.loadCities();
     }
+    
+    // Cargar todas las comunas/rutas para el filtro
+    final allCommunes = await locationProvider.loadAllCommunes();
+    locationProvider.setCommunes = allCommunes;
+    
+    // Cargar todas las ubicaciones
+    final allLocations = await locationProvider.loadAllLocations(allCommunes);
+    locationProvider.setLocations = allLocations;
 
     if (mounted) {
       setState(() {
@@ -152,10 +162,26 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
           }
 
           final allRecords = snapshot.data!;
+          final locationProvider = context.watch<LocationProvider>();
+          final communes = locationProvider.communes;
+          final locations = locationProvider.locations;
           
           // Filtrar por año seleccionado
           final yearRecords = allRecords.where((r) => r.date.year == selectedYear).toList();
-          final weeklyData = _processRecordsToWeeks(yearRecords);
+          
+          // Filtrar por ruta si está seleccionada
+          List<AttendanceRecordModel> routeFilteredRecords = yearRecords;
+          if (selectedCommuneId != null) {
+            final communeSectorIds = locations
+                .where((l) => l.communeId == selectedCommuneId)
+                .map((l) => l.id)
+                .toList();
+            routeFilteredRecords = yearRecords
+                .where((r) => communeSectorIds.contains(r.sectorId))
+                .toList();
+          }
+          
+          final weeklyData = _processRecordsToWeeks(routeFilteredRecords);
 
           // Filtrar por mes si está seleccionado
           final filteredData = selectedMonth != null 
@@ -174,59 +200,94 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Selector de Año
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              DropdownButtonFormField<int>(
-                                value: selectedYear,
-                                items: List.generate(5, (index) => DateTime.now().year - index)
-                                    .map((year) => DropdownMenuItem(
-                                      value: year,
-                                      child: Text(year.toString()),
-                                    )).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedYear = value!;
-                                    selectedMonth = null; // Reset month filter
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Selector de Mes
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
-                              DropdownButtonFormField<String>(
-                                value: selectedMonth,
-                                hint: const Text('Todos los meses'),
-                                items: [
-                                  const DropdownMenuItem<String>(
-                                    value: null,
-                                    child: Text('Todos los meses'),
+                        const Text('Filtros:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        // Primera fila: Año y Mes
+                        Row(
+                          children: [
+                            // Selector de Año
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  DropdownButtonFormField<int>(
+                                    value: selectedYear,
+                                    items: List.generate(5, (index) => DateTime.now().year - index)
+                                        .map((year) => DropdownMenuItem(
+                                          value: year,
+                                          child: Text(year.toString()),
+                                        )).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedYear = value!;
+                                        selectedMonth = null; // Reset month filter
+                                      });
+                                    },
                                   ),
-                                  ..._months.map((month) => DropdownMenuItem(
-                                    value: month,
-                                    child: Text(month),
-                                  )),
                                 ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedMonth = value;
-                                  });
-                                },
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Selector de Mes
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  DropdownButtonFormField<String>(
+                                    value: selectedMonth,
+                                    hint: const Text('Todos los meses'),
+                                    items: [
+                                      const DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text('Todos los meses'),
+                                      ),
+                                      ..._months.map((month) => DropdownMenuItem(
+                                        value: month,
+                                        child: Text(month),
+                                      )),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedMonth = value;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Segunda fila: Selector de Ruta
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Ruta:', style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButtonFormField<String>(
+                              value: selectedCommuneId,
+                              hint: const Text('Todas las rutas'),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('Todas las rutas'),
+                                ),
+                                ...communes.map((commune) => DropdownMenuItem(
+                                  value: commune.id,
+                                  child: Text(commune.name),
+                                )),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedCommuneId = value;
+                                });
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -264,11 +325,17 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
   }
 
   Widget _buildTTLTable(List<Map<String, dynamic>> data, int maxTtlReal) {
+    final locationProvider = context.read<LocationProvider>();
+    final selectedRouteName = selectedCommuneId != null 
+        ? locationProvider.communes.firstWhere((c) => c.id == selectedCommuneId, orElse: () => 
+            Commune(id: '', name: 'Ruta Desconocida', cityId: '', locationIds: [], createdAt: DateTime.now(), updatedAt: DateTime.now())).name
+        : 'Todas las rutas';
+        
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Reporte TTLs - Año $selectedYear${selectedMonth != null ? " - $selectedMonth" : ""}',
+          'Reporte TTLs - Año $selectedYear${selectedMonth != null ? " - $selectedMonth" : ""} - $selectedRouteName',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),

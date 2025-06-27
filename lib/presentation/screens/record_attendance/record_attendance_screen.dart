@@ -102,16 +102,98 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     }
   }
 
+  bool _canSubmit(UserProvider userProvider) {
+    final currentUser = userProvider.user;
+    
+    // Validar que el usuario está autenticado
+    if (currentUser == null) {
+      return false;
+    }
+    
+    // Para usuario normal: validar que tenga sector asignado
+    if (!userProvider.isAdmin && currentUser.sectorId == null) {
+      return false;
+    }
+    
+    // Validar que hay un evento seleccionado
+    if (_selectedMeeting == null) {
+      return false;
+    }
+    
+    // Validar que hay al menos un asistente o una visita
+    if (_selectedAttendeeIds.isEmpty && _visitorCount == 0) {
+      return false;
+    }
+    
+    // Si es admin, validar que hay un sector seleccionado
+    if (userProvider.isAdmin && _selectedLocation == null) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  Widget _buildNoAttendeesMessage(UserProvider userProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        border: Border.all(color: Colors.orange.shade200),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Colors.orange.shade700,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            userProvider.isAdmin 
+                ? 'No hay asistentes en el sector seleccionado.\nSelecciona una ciudad, comuna y sector válidos.'
+                : 'No hay asistentes registrados en tu sector.\nContacta al administrador para agregar asistentes.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.orange.shade800,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (!userProvider.isAdmin)
+            Text(
+              'Sector asignado: ${_sectorName ?? 'Cargando...'}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.orange.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   void _recordAttendance() async {
+    // Validaciones mejoradas con mensajes específicos
     if (_selectedMeeting == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor selecciona un evento.')),
+        const SnackBar(
+          content: Text('⚠️ Por favor selecciona un evento antes de continuar.'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
+    
     if (_selectedAttendeeIds.isEmpty && _visitorCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor selecciona al menos un asistente o agrega una visita.')),
+        const SnackBar(
+          content: Text('⚠️ Debes seleccionar al menos un asistente o agregar una visita.'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -121,7 +203,10 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
 
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Usuario no autenticado.')),
+        const SnackBar(
+          content: Text('❌ Error: Usuario no autenticado.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -129,7 +214,10 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     // Si no es admin, verificar que tenga sector asignado
     if (!userProvider.isAdmin && currentUser.sectorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Usuario sin sector asignado.')),
+        const SnackBar(
+          content: Text('❌ Error: Usuario sin sector asignado.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -139,7 +227,10 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       if (userProvider.isAdmin) {
         if (_selectedLocation == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Por favor selecciona un sector.')),
+            const SnackBar(
+              content: Text('⚠️ Por favor selecciona una ciudad, comuna y sector.'),
+              backgroundColor: Colors.orange,
+            ),
           );
           return;
         }
@@ -159,7 +250,11 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       await _attendanceRecordService.addAttendanceRecord(record);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Asistencia registrada exitosamente.')),
+        SnackBar(
+          content: Text('✅ Asistencia registrada exitosamente - ${_selectedAttendeeIds.length} asistentes + $_visitorCount visitas'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
       );
       // Limpiar el formulario
       setState(() {
@@ -175,7 +270,11 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al registrar asistencia: $e')),
+        SnackBar(
+          content: Text('❌ Error al registrar asistencia: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }
@@ -216,19 +315,79 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       }
     }
 
+    // Validación para usuarios no aprobados (especialmente importante para usuarios normales)
+    if (currentUser != null && !currentUser.isApproved && !userProvider.isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ingresar Asistencias')),
+        body: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.pending_actions, size: 64, color: Colors.orange.shade600),
+              const SizedBox(height: 16),
+              Text(
+                'Cuenta Pendiente de Aprobación',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade800,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Tu cuenta está pendiente de aprobación por un administrador. Una vez aprobada, podrás registrar asistencias.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.orange.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Volver al Inicio'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (meetingProvider.isLoading || attendeeProvider.isLoading || locationProvider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ingresar Asistencias')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (meetingProvider.errorMessage != null) {
-      return Center(child: Text('Error al cargar eventos: ${meetingProvider.errorMessage}'));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ingresar Asistencias')),
+        body: Center(child: Text('Error al cargar eventos: ${meetingProvider.errorMessage}')),
+      );
     }
     if (attendeeProvider.errorMessage != null) {
-      return Center(child: Text('Error al cargar asistentes: ${attendeeProvider.errorMessage}'));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ingresar Asistencias')),
+        body: Center(child: Text('Error al cargar asistentes: ${attendeeProvider.errorMessage}')),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ingresar Asistencias'),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _canSubmit(userProvider) ? _recordAttendance : null,
+        backgroundColor: _canSubmit(userProvider) ? null : Colors.grey,
+        icon: const Icon(Icons.save),
+        label: const Text('Registrar Asistencia'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -370,7 +529,7 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
             ),
             const SizedBox(height: 10),
             filteredAttendees.isEmpty
-                ? const Text('No hay asistentes disponibles en tu sector.')
+                ? _buildNoAttendeesMessage(userProvider)
                 : SizedBox(
                     height: MediaQuery.of(context).size.height * 0.4,
                     child: ListView.builder(
@@ -456,13 +615,7 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
                       },
                     ),
                   ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _recordAttendance,
-                child: const Text('Registrar Asistencia'),
-              ),
-            ),
+            const SizedBox(height: 80), // Espacio extra para el FloatingActionButton
           ],
         ),
       ),
