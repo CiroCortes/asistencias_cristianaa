@@ -22,6 +22,7 @@ import 'package:asistencias_app/presentation/screens/admin_dashboard/quarterly_t
 import 'package:asistencias_app/data/models/user_model.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
+import 'package:asistencias_app/core/utils/date_utils.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -380,10 +381,27 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
         // Filtrar registros del mes actual
         final now = DateTime.now();
         final currentMonthRecords = records.where((r) => r.date.month == now.month && r.date.year == now.year).toList();
-        // Mapear attendedAttendeeIds a tipo
-        int totalMembers = 0;
-        int totalListeners = 0;
-        int totalVisitors = 0;
+        
+        // Formatear el nombre del mes actual
+        final monthNames = [
+          '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+        final currentMonthName = monthNames[now.month];
+        
+        // Calcular semana actual y anterior
+        final currentWeek = getWeekNumber(now);
+        final previousWeek = currentWeek - 1;
+        final currentYear = now.year;
+        
+        // Filtrar registros por semanas
+        final currentWeekRecords = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
+        final previousWeekRecords = records.where((r) => r.weekNumber == previousWeek && r.year == currentYear).toList();
+        
+        // Calcular asistencia mensual
+        int totalMonthlyMembers = 0;
+        int totalMonthlyListeners = 0;
+        int totalMonthlyVisitors = 0;
         for (final record in currentMonthRecords) {
           final ids = record.attendedAttendeeIds;
           for (final id in ids) {
@@ -391,13 +409,47 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
               (a) => a.id == id,
               orElse: () => AttendeeModel(id: '', type: '', sectorId: '', createdAt: DateTime.now(), createdByUserId: ''),
             );
-            if (attendee.type == 'member') totalMembers++;
-            if (attendee.type == 'listener') totalListeners++;
+            if (attendee.type == 'member') totalMonthlyMembers++;
+            if (attendee.type == 'listener') totalMonthlyListeners++;
           }
-          totalVisitors += record.visitorCount;
+          totalMonthlyVisitors += record.visitorCount;
         }
-        final totalAttendance = totalMembers + totalListeners + totalVisitors;
-        final averageAttendance = currentMonthRecords.isNotEmpty ? (totalAttendance / currentMonthRecords.length).round() : 0;
+        final totalMonthlyAttendance = totalMonthlyMembers + totalMonthlyListeners + totalMonthlyVisitors;
+        
+        // Calcular asistencia semanal actual
+        int currentWeekAttendance = 0;
+        for (final record in currentWeekRecords) {
+          currentWeekAttendance += record.attendedAttendeeIds.length + record.visitorCount;
+        }
+        
+        // Calcular asistencia semanal anterior
+        int previousWeekAttendance = 0;
+        for (final record in previousWeekRecords) {
+          previousWeekAttendance += record.attendedAttendeeIds.length + record.visitorCount;
+        }
+        
+        // Calcular TTL por días específicos de la semana actual
+        final currentWeekRecordsFiltered = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
+        
+        // TTL Miércoles
+        final ttlMiercoles = currentWeekRecordsFiltered
+            .where((r) => r.date.weekday == DateTime.wednesday)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        // TTL Sábados  
+        final ttlSabados = currentWeekRecordsFiltered
+            .where((r) => r.date.weekday == DateTime.saturday)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        // TTL Domingo AM (antes de las 2 PM)
+        final ttlDomingoAM = currentWeekRecordsFiltered
+            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour < 14)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        // TTL Domingo PM (después de las 2 PM)
+        final ttlDomingoPM = currentWeekRecordsFiltered
+            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -419,13 +471,13 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Asistencia Total',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            Text(
+                              'Asistencia Total - $currentMonthName $currentYear',
+                              style: const TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '$totalAttendance',
+                              '$totalMonthlyAttendance',
                               style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -446,16 +498,166 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Asistencia Promedio',
+                              'Asistencia Semanal',
                               style: TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Semana $currentWeek: $currentWeekAttendance',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).primaryColor),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Semana $previousWeek: $previousWeekAttendance',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Diferencia: ${currentWeekAttendance - previousWeekAttendance}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: currentWeekAttendance >= previousWeekAttendance 
+                                              ? Colors.green 
+                                              : Colors.red),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      currentWeekAttendance >= previousWeekAttendance 
+                                          ? Icons.trending_up 
+                                          : Icons.trending_down,
+                                      size: 16,
+                                      color: currentWeekAttendance >= previousWeekAttendance 
+                                          ? Colors.green 
+                                          : Colors.red,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Cards TTL Semanal por Días
+              const Text(
+                'TTL Semanal por Días',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL MIERC',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              '$averageAttendance',
+                              '$ttlMiercoles',
                               style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).primaryColor),
+                                  color: Colors.blue[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL SAB',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlSabados',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL DOM AM',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlDomingoAM',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL DOM PM',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlDomingoPM',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple[700]),
                             ),
                           ],
                         ),
@@ -472,46 +674,136 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 220,
+                  height: 250,
                   child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: [totalMembers, totalListeners, totalVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 5,
-                      barTouchData: BarTouchData(enabled: true),
-                      titlesData: FlTitlesData(
-                        leftTitles: const AxisTitles(
-                          sideTitles:  SideTitles(showTitles: true, reservedSize: 28),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              switch (value.toInt()) {
-                                case 0:
-                                  return const Text('Miembros');
-                                case 1:
-                                  return const Text('Oyentes');
-                                case 2:
-                                  return const Text('Visitas');
-                              }
-                              return const Text('');
-                            },
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceEvenly,
+                          maxY: [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 10,
+                          barTouchData: BarTouchData(
+                            enabled: false, // Desactivado porque tooltips están siempre visibles
+                            touchTooltipData: BarTouchTooltipData(
+                              tooltipBgColor: Colors.transparent, // Sin fondo
+                              tooltipRoundedRadius: 0,
+                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                String value = '';
+                                switch (group.x) {
+                                  case 0:
+                                    value = '$totalMonthlyMembers';
+                                    break;
+                                  case 1:
+                                    value = '$totalMonthlyListeners';
+                                    break;
+                                  case 2:
+                                    value = '$totalMonthlyVisitors';
+                                    break;
+                                }
+                                return BarTooltipItem(
+                                  value,
+                                  const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
+                          titlesData: FlTitlesData(
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  switch (value.toInt()) {
+                                    case 0:
+                                      return const Text('Miembros');
+                                    case 1:
+                                      return const Text('Oyentes');
+                                    case 2:
+                                      return const Text('Visitas');
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: [
+                            BarChartGroupData(
+                              x: 0, 
+                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                              barRods: [BarChartRodData(
+                                toY: totalMonthlyMembers.toDouble(), 
+                                color: Colors.blue,
+                                width: 40,
+                                borderRadius: BorderRadius.circular(4),
+                              )]
+                            ),
+                            BarChartGroupData(
+                              x: 1, 
+                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                              barRods: [BarChartRodData(
+                                toY: totalMonthlyListeners.toDouble(), 
+                                color: Colors.orange,
+                                width: 40,
+                                borderRadius: BorderRadius.circular(4),
+                              )]
+                            ),
+                            BarChartGroupData(
+                              x: 2, 
+                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                              barRods: [BarChartRodData(
+                                toY: totalMonthlyVisitors.toDouble(), 
+                                color: Colors.green,
+                                width: 40,
+                                borderRadius: BorderRadius.circular(4),
+                              )]
+                            ),
+                          ],
                         ),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: [
-                        BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: totalMembers.toDouble(), color: Colors.blue)]),
-                        BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: totalListeners.toDouble(), color: Colors.orange)]),
-                        BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: totalVisitors.toDouble(), color: Colors.green)]),
-                      ],
-                    ),
+                                              ),
                   ),
+                const SizedBox(height: 32),
+                // Calcular total semanal para el subtítulo
+                Builder(
+                  builder: (context) {
+                    int totalSemanal = 0;
+                    for (final record in currentWeekRecordsFiltered) {
+                      totalSemanal += record.attendedAttendeeIds.length + record.visitorCount;
+                    }
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Asistencia Semanal por Rutas',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Semana: $currentWeek, total: $totalSemanal',
+                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 250,
+                  child: _WeeklyRouteAttendanceChart(records: currentWeekRecordsFiltered),
                 ),
                 const SizedBox(height: 32),
-                _ComunaSectorAttendanceChart(records: records),
+                _ComunaSectorAttendanceChart(
+                  records: currentWeekRecordsFiltered,
+                  currentWeek: currentWeek,
+                  currentYear: currentYear,
+                ),
               ],
               const SizedBox(height: 24),
             ],
@@ -525,7 +817,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
 // --- NUEVO WIDGET: _ComunaSectorAttendanceChart ---
 class _ComunaSectorAttendanceChart extends StatefulWidget {
   final List<AttendanceRecordModel> records;
-  const _ComunaSectorAttendanceChart({required this.records});
+  final int currentWeek;
+  final int currentYear;
+  
+  const _ComunaSectorAttendanceChart({
+    required this.records,
+    required this.currentWeek,
+    required this.currentYear,
+  });
 
   @override
   State<_ComunaSectorAttendanceChart> createState() => _ComunaSectorAttendanceChartState();
@@ -613,8 +912,15 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
         ? locations.where((l) => l.communeId == selectedCommuneId).toList()
         : [];
 
-    // Calcular asistencia por sector
+    // Calcular asistencia por sector (solo semana actual)
     final Map<String, int> sectorAttendance = {};
+    
+    // Inicializar TODOS los sectores con 0 (para mostrar incluso sectores sin asistencias)
+    for (final sector in sectors) {
+      sectorAttendance[sector.name] = 0;
+    }
+    
+    // Sumar asistencias reales
     for (final sector in sectors) {
       final sectorRecords = widget.records.where((r) => r.sectorId == sector.id);
       int total = 0;
@@ -624,12 +930,25 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
       sectorAttendance[sector.name] = total;
     }
 
+    // Calcular total semanal para el título
+    final int totalSemanal = sectorAttendance.values.fold(0, (sum, value) => sum + value);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-        const Text(
-          'Asistencia Total por Sector',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Asistencia Total por Sector',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Semana: ${widget.currentWeek}, total: $totalSemanal',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         // Selector de Ciudad
@@ -681,45 +1000,94 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
         if (selectedCommuneId != null && sectorAttendance.isNotEmpty) ...[
           SizedBox(
             height: 260,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: sectorAttendance.values.isNotEmpty 
-                    ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) 
-                    : 10,
-                barGroups: sectorAttendance.entries
-                    .toList()
-                    .asMap()
-                    .entries
-                    .map((entry) => BarChartGroupData(
-                          x: entry.key,
-                          barRods: [BarChartRodData(toY: entry.value.value.toDouble(), color: Colors.purple)],
-                        ))
-                    .toList(),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= sectorAttendance.keys.length) return const SizedBox.shrink();
-                        return Transform.rotate(
-                          angle: -0.7,
-                          child: Text(
-                            sectorAttendance.keys.elementAt(index),
-                            style: const TextStyle(fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      },
+            child: Builder(
+              builder: (context) {
+                final entries = sectorAttendance.entries.toList();
+                final hasValidData = entries.isNotEmpty;
+                
+                return BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceEvenly,
+                    maxY: sectorAttendance.values.isNotEmpty 
+                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) 
+                        : 10,
+                    barTouchData: BarTouchData(
+                      enabled: false, // Tooltips siempre visibles
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipBgColor: Colors.transparent,
+                        tooltipRoundedRadius: 0,
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final index = group.x.toInt();
+                          
+                          // Verificación robusta de índices
+                          if (!hasValidData || index < 0 || index >= entries.length) {
+                            return null; // No mostrar tooltip si no hay datos válidos
+                          }
+                          
+                          final value = entries[index].value;
+                          return BarTooltipItem(
+                            '$value',
+                            const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          );
+                        },
+                      ),
                     ),
+                    barGroups: entries
+                        .asMap()
+                        .entries
+                        .map((entry) => BarChartGroupData(
+                              x: entry.key,
+                              showingTooltipIndicators: hasValidData ? [0] : [], // Solo mostrar si hay datos válidos
+                              barRods: [BarChartRodData(
+                                toY: entry.value.value.toDouble(), 
+                                color: Colors.purple[700],
+                                width: 40,
+                                borderRadius: BorderRadius.circular(4),
+                              )],
+                            ))
+                        .toList(),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 60,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            
+                            if (!hasValidData || index < 0 || index >= entries.length) {
+                              return const SizedBox.shrink();
+                            }
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Transform.rotate(
+                                angle: -0.5,
+                                child: Text(
+                                  entries[index].key,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
                   ),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(show: false),
-              ),
+                );
+              },
             ),
           ),
         ] else if (selectedCommuneId != null) ...[
@@ -728,6 +1096,148 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
           ),
         ],
       ],
+    );
+  }
+}
+
+// --- NUEVO WIDGET: _WeeklyRouteAttendanceChart ---
+class _WeeklyRouteAttendanceChart extends StatelessWidget {
+  final List<AttendanceRecordModel> records;
+  
+  const _WeeklyRouteAttendanceChart({required this.records});
+
+  @override
+  Widget build(BuildContext context) {
+    final locationProvider = context.watch<LocationProvider>();
+    final communes = locationProvider.communes;
+    final locations = locationProvider.locations;
+
+    if (communes.isEmpty || locations.isEmpty) {
+      return const Center(child: Text('Cargando datos de rutas...'));
+    }
+
+    // Agrupar asistencias por comuna
+    final Map<String, int> communeAttendance = {};
+    final Map<String, String> communeNames = {};
+
+    // Inicializar comunas con sus nombres
+    for (final commune in communes) {
+      communeAttendance[commune.id] = 0;
+      communeNames[commune.id] = commune.name;
+    }
+
+    // Calcular asistencias por comuna
+    for (final record in records) {
+      // Buscar la comuna del sector
+      final location = locations.firstWhere(
+        (loc) => loc.id == record.sectorId,
+        orElse: () => Location(
+          id: '',
+          name: '',
+          communeId: '',
+          address: '',
+          attendeeIds: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      
+      if (location.communeId.isNotEmpty && communeAttendance.containsKey(location.communeId)) {
+        communeAttendance[location.communeId] = 
+            (communeAttendance[location.communeId] ?? 0) + 
+            record.attendedAttendeeIds.length + 
+            record.visitorCount;
+      }
+    }
+
+    // Mostrar TODAS las comunas (incluso con 0 asistencias)
+    final allCommuneEntries = communeAttendance.entries.toList();
+
+    if (allCommuneEntries.isEmpty) {
+      return const Center(child: Text('No hay rutas configuradas'));
+    }
+
+    // Preparar datos para el gráfico
+    final maxValue = allCommuneEntries.map((e) => e.value).isNotEmpty 
+        ? allCommuneEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b)
+        : 0;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceEvenly,
+        maxY: maxValue.toDouble() + 5,
+        barTouchData: BarTouchData(
+          enabled: false, // Tooltips siempre visibles
+          touchTooltipData: BarTouchTooltipData(
+            tooltipBgColor: Colors.transparent, // Sin fondo
+            tooltipRoundedRadius: 0,
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final communeId = allCommuneEntries[group.x.toInt()].key;
+              final value = communeAttendance[communeId] ?? 0;
+              return BarTooltipItem(
+                '$value',
+                const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 60,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= allCommuneEntries.length) {
+                  return const SizedBox.shrink();
+                }
+                final communeId = allCommuneEntries[index].key;
+                final communeName = communeNames[communeId] ?? 'Ruta $index';
+                
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Transform.rotate(
+                    angle: -0.5, // Títulos ladeados
+                    child: Text(
+                      communeName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: allCommuneEntries.asMap().entries.map((entry) {
+          final index = entry.key;
+          final communeData = entry.value;
+          return BarChartGroupData(
+            x: index,
+            showingTooltipIndicators: [0], // Siempre mostrar tooltip
+            barRods: [
+              BarChartRodData(
+                toY: communeData.value.toDouble(),
+                color: Colors.purple[700], // Barras púrpuras
+                width: 30,
+                borderRadius: BorderRadius.circular(4),
+              )
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 } 
