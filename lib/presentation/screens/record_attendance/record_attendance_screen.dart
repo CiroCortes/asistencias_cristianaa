@@ -102,6 +102,38 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     }
   }
 
+  /// Combina la fecha seleccionada con la hora del evento seleccionado
+  /// Esto resuelve el problema de AM/PM para registros históricos
+  DateTime _combineSelectedDateWithEventTime() {
+    if (_selectedMeeting == null) {
+      return _selectedDate; // Fallback a fecha original si no hay evento
+    }
+
+    try {
+      // Parsear la hora del evento (formato "HH:MM")
+      final timeParts = _selectedMeeting!.time.split(':');
+      if (timeParts.length != 2) {
+        print('⚠️ Formato de hora inválido: ${_selectedMeeting!.time}');
+        return _selectedDate;
+      }
+
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      // Combinar fecha seleccionada + hora del evento
+      return DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        hour,
+        minute,
+      );
+    } catch (e) {
+      print('❌ Error al combinar fecha y hora del evento: $e');
+      return _selectedDate; // Fallback a fecha original en caso de error
+    }
+  }
+
   bool _canSubmit(UserProvider userProvider) {
     final currentUser = userProvider.user;
     
@@ -239,9 +271,19 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
         sectorId = currentUser.sectorId!;
       }
 
+      // Combinar fecha seleccionada con hora real del evento
+      final eventDateTime = _combineSelectedDateWithEventTime();
+      
+      // Debug: Mostrar la diferencia entre fecha seleccionada y fecha final
+      // print('🔍 DEBUG - Registro de Asistencia:');
+      // print('   Fecha seleccionada: ${_selectedDate}');
+      // print('   Evento: ${_selectedMeeting!.name} (${_selectedMeeting!.time})');
+      // print('   Fecha final (evento): ${eventDateTime}');
+      // print('   AM/PM resultante: ${eventDateTime.hour < 14 ? "AM" : "PM"}');
+      
       final record = AttendanceRecordModel(
         sectorId: sectorId,
-        date: _selectedDate,
+        date: eventDateTime, // ← Usar fecha/hora combinada del evento
         meetingType: _selectedMeeting!.name,
         attendedAttendeeIds: _selectedAttendeeIds,
         visitorCount: _visitorCount,
