@@ -573,6 +573,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                               'TTL MIERC',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
                             ),
+                            Text(
+                              'Semana $currentWeek',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '$ttlMiercoles',
@@ -598,6 +602,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             const Text(
                               'TTL SAB',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              'Semana $currentWeek',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -625,6 +633,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                               'TTL DOM AM',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
                             ),
+                            Text(
+                              'Semana $currentWeek',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '$ttlDomingoAM',
@@ -650,6 +662,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             const Text(
                               'TTL DOM PM',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              'Semana $currentWeek',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(

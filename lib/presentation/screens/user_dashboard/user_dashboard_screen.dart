@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/core/providers/attendee_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
@@ -9,6 +10,8 @@ import 'package:asistencias_app/presentation/screens/record_attendance/record_at
 import 'package:fl_chart/fl_chart.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
+import 'package:asistencias_app/data/models/attendee_model.dart';
+import 'package:asistencias_app/core/utils/date_utils.dart';
 
 class UserDashboardScreen extends StatefulWidget {
   const UserDashboardScreen({super.key});
@@ -256,6 +259,8 @@ class _HomeDashboardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.user!;
+    final attendeeProvider = context.watch<AttendeeProvider>();
+    final attendees = attendeeProvider.attendees;
     final attendanceRecordService = AttendanceRecordService();
 
     return StreamBuilder<List<AttendanceRecordModel>>(
@@ -267,24 +272,85 @@ class _HomeDashboardContent extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final records = snapshot.data!;
-        // Filtrar registros del mes actual
+        
+        // Calcular semana actual y anterior
         final now = DateTime.now();
+        final currentWeek = getWeekNumber(now);
+        final previousWeek = currentWeek - 1;
+        final currentYear = now.year;
+        
+        // Filtrar registros por semanas
+        final currentWeekRecords = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
+        final previousWeekRecords = records.where((r) => r.weekNumber == previousWeek && r.year == currentYear).toList();
+        
+        // Calcular asistencia semanal
+        final currentWeekAttendance = currentWeekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+        final previousWeekAttendance = previousWeekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+        
+        // Calcular promedio de la semana actual (solo días con reuniones)
+        final daysWithMeetings = currentWeekRecords.map((r) => r.date.weekday).toSet().length;
+        final weeklyAverage = daysWithMeetings > 0 ? (currentWeekAttendance / daysWithMeetings).round() : 0;
+        
+        // Calcular TTL por días específicos de la semana actual
+        final ttlMiercoles = currentWeekRecords
+            .where((r) => r.date.weekday == DateTime.wednesday)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        final ttlSabados = currentWeekRecords
+            .where((r) => r.date.weekday == DateTime.saturday)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        final ttlDomingoAM = currentWeekRecords
+            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour < 14)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            
+        final ttlDomingoPM = currentWeekRecords
+            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
+            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+
+        // Calcular TTL semanal por tipo (miembros, oyentes, visitas)
+        int weeklyMembers = 0;
+        int weeklyListeners = 0;
+        int weeklyVisitors = 0;
+        
+        for (final record in currentWeekRecords) {
+          // Contar visitas directas
+          weeklyVisitors += record.visitorCount;
+          
+          // Contar miembros y oyentes por attendeeId
+          for (final attendeeId in record.attendedAttendeeIds) {
+            final attendee = attendees.firstWhere(
+              (a) => a.id == attendeeId,
+              orElse: () => AttendeeModel(
+                type: 'member', // Default fallback
+                sectorId: user.sectorId!,
+                createdAt: DateTime.now(),
+                createdByUserId: user.uid,
+              ),
+            );
+            
+            if (attendee.type == 'member') {
+              weeklyMembers++;
+            } else if (attendee.type == 'listener') {
+              weeklyListeners++;
+            }
+          }
+        }
+        
+        // Calcular suma total para gráficos
+        final totalByType = weeklyMembers + weeklyListeners + weeklyVisitors;
+
+        // Filtrar registros del mes actual para el gráfico
         final currentMonthRecords = records.where((r) => r.date.month == now.month && r.date.year == now.year).toList();
-        // KPIs
-        int totalAttendance = 0;
-        int totalWeeks = 0;
         Map<int, int> weekAttendance = {};
         for (final record in currentMonthRecords) {
           final week = record.weekNumber;
           final total = record.attendedAttendeeIds.length + record.visitorCount;
           weekAttendance[week] = (weekAttendance[week] ?? 0) + total;
-          totalAttendance += total;
         }
-        totalWeeks = weekAttendance.length;
-        final averageAttendance = totalWeeks > 0 ? (totalAttendance / totalWeeks).round() : 0;
-        // Asistencia última semana
-        int lastWeek = weekAttendance.keys.isNotEmpty ? weekAttendance.keys.reduce((a, b) => a > b ? a : b) : 0;
-        int lastWeekAttendance = weekAttendance[lastWeek] ?? 0;
+        
+        // Calcular suma total del mes
+        final monthlyTotal = weekAttendance.values.fold(0, (sum, value) => sum + value);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -306,17 +372,24 @@ class _HomeDashboardContent extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Asistencia Total (Mes)',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            Text(
+                              'Asistencia Total - Semana $currentWeek',
+                              style: const TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '$totalAttendance',
+                              '$currentWeekAttendance',
                               style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).primaryColor),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Promedio: $weeklyAverage',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -333,16 +406,166 @@ class _HomeDashboardContent extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Promedio por Semana',
+                              'Asistencia Semanal',
                               style: TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Semana $currentWeek: $currentWeekAttendance',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).primaryColor),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Semana $previousWeek: $previousWeekAttendance',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Diferencia: ${currentWeekAttendance - previousWeekAttendance}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: currentWeekAttendance >= previousWeekAttendance 
+                                              ? Colors.green 
+                                              : Colors.red),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      currentWeekAttendance >= previousWeekAttendance 
+                                          ? Icons.trending_up 
+                                          : Icons.trending_down,
+                                      size: 16,
+                                      color: currentWeekAttendance >= previousWeekAttendance 
+                                          ? Colors.green 
+                                          : Colors.red,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Cards TTL Semanal por Días
+              const Text(
+                'TTL Semanal por Días',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL MIERC',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
                             Text(
-                              '$averageAttendance',
+                              '$ttlMiercoles',
                               style: TextStyle(
-                                  fontSize: 28,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).primaryColor),
+                                  color: Colors.blue[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL SAB',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlSabados',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL DOM AM',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlDomingoAM',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange[700]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Card(
+                      elevation: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'TTL DOM PM',
+                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$ttlDomingoPM',
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple[700]),
                             ),
                           ],
                         ),
@@ -358,7 +581,16 @@ class _HomeDashboardContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Asistencia por Semana', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Asistencia por Semana', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            'Total mensual: $monthlyTotal',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
                       SizedBox(
                         height: 200,
                         child: weekAttendance.isEmpty
@@ -367,9 +599,37 @@ class _HomeDashboardContent extends StatelessWidget {
                                 BarChartData(
                                   alignment: BarChartAlignment.spaceAround,
                                   maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
-                                  barGroups: weekAttendance.entries.map((e) => BarChartGroupData(x: e.key, barRods: [BarChartRodData(toY: e.value.toDouble(), color: Colors.blue)])).toList(),
+                                  barTouchData: BarTouchData(
+                                    enabled: false, // Desactivado porque tooltips están siempre visibles
+                                    touchTooltipData: BarTouchTooltipData(
+                                      tooltipBgColor: Colors.transparent, // Sin fondo
+                                      tooltipRoundedRadius: 0,
+                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                        final value = weekAttendance[group.x.toInt()] ?? 0;
+                                        return BarTooltipItem(
+                                          '$value',
+                                          const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  barGroups: weekAttendance.entries.map((e) => BarChartGroupData(
+                                    x: e.key, 
+                                    showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                                    barRods: [BarChartRodData(
+                                      toY: e.value.toDouble(), 
+                                      color: Colors.blue,
+                                      width: 40,
+                                      borderRadius: BorderRadius.circular(4),
+                                    )]
+                                  )).toList(),
                                   titlesData: FlTitlesData(
-                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('S${value.toInt()}'))),
                                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -383,17 +643,111 @@ class _HomeDashboardContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Asistencia Última Semana', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text(
-                        lastWeekAttendance > 0 ? '$lastWeekAttendance asistentes' : 'No hay datos para la última semana.',
-                        style: const TextStyle(fontSize: 18),
+              // Nuevo gráfico TTL Semanal por Tipo
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TTL Semanal por Tipo - Semana $currentWeek',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Total: $totalByType',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 250,
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceEvenly,
+                    maxY: [weeklyMembers, weeklyListeners, weeklyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 10,
+                    barTouchData: BarTouchData(
+                      enabled: false, // Desactivado porque tooltips están siempre visibles
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipBgColor: Colors.transparent, // Sin fondo
+                        tooltipRoundedRadius: 0,
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          String value = '';
+                          switch (group.x) {
+                            case 0:
+                              value = '$weeklyMembers';
+                              break;
+                            case 1:
+                              value = '$weeklyListeners';
+                              break;
+                            case 2:
+                              value = '$weeklyVisitors';
+                              break;
+                          }
+                          return BarTooltipItem(
+                            value,
+                            const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            switch (value.toInt()) {
+                              case 0:
+                                return const Text('Miembros');
+                              case 1:
+                                return const Text('Oyentes');
+                              case 2:
+                                return const Text('Visitas');
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: [
+                      BarChartGroupData(
+                        x: 0, 
+                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                        barRods: [BarChartRodData(
+                          toY: weeklyMembers.toDouble(), 
+                          color: Colors.blue,
+                          width: 40,
+                          borderRadius: BorderRadius.circular(4),
+                        )]
+                      ),
+                      BarChartGroupData(
+                        x: 1, 
+                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                        barRods: [BarChartRodData(
+                          toY: weeklyListeners.toDouble(), 
+                          color: Colors.green,
+                          width: 40,
+                          borderRadius: BorderRadius.circular(4),
+                        )]
+                      ),
+                      BarChartGroupData(
+                        x: 2, 
+                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
+                        barRods: [BarChartRodData(
+                          toY: weeklyVisitors.toDouble(), 
+                          color: Colors.orange,
+                          width: 40,
+                          borderRadius: BorderRadius.circular(4),
+                        )]
                       ),
                     ],
                   ),
