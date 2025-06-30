@@ -207,58 +207,58 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                         const SizedBox(height: 12),
                         // Primera fila: Año y Mes
                         Row(
-                          children: [
-                            // Selector de Año
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedYear,
-                                    items: List.generate(5, (index) => DateTime.now().year - index)
-                                        .map((year) => DropdownMenuItem(
-                                          value: year,
-                                          child: Text(year.toString()),
-                                        )).toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedYear = value!;
-                                        selectedMonth = null; // Reset month filter
-                                      });
-                                    },
-                                  ),
-                                ],
+                      children: [
+                        // Selector de Año
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              DropdownButtonFormField<int>(
+                                value: selectedYear,
+                                items: List.generate(5, (index) => DateTime.now().year - index)
+                                    .map((year) => DropdownMenuItem(
+                                      value: year,
+                                      child: Text(year.toString()),
+                                    )).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedYear = value!;
+                                    selectedMonth = null; // Reset month filter
+                                  });
+                                },
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            // Selector de Mes
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  DropdownButtonFormField<String>(
-                                    value: selectedMonth,
-                                    hint: const Text('Todos los meses'),
-                                    items: [
-                                      const DropdownMenuItem<String>(
-                                        value: null,
-                                        child: Text('Todos los meses'),
-                                      ),
-                                      ..._months.map((month) => DropdownMenuItem(
-                                        value: month,
-                                        child: Text(month),
-                                      )),
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedMonth = value;
-                                      });
-                                    },
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Selector de Mes
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
+                              DropdownButtonFormField<String>(
+                                value: selectedMonth,
+                                hint: const Text('Todos los meses'),
+                                items: [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('Todos los meses'),
                                   ),
+                                  ..._months.map((month) => DropdownMenuItem(
+                                    value: month,
+                                    child: Text(month),
+                                  )),
                                 ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedMonth = value;
+                                  });
+                                },
                               ),
+                            ],
+                          ),
                             ),
                           ],
                         ),

@@ -280,7 +280,7 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       // print('   Evento: ${_selectedMeeting!.name} (${_selectedMeeting!.time})');
       // print('   Fecha final (evento): ${eventDateTime}');
       // print('   AM/PM resultante: ${eventDateTime.hour < 14 ? "AM" : "PM"}');
-      
+
       final record = AttendanceRecordModel(
         sectorId: sectorId,
         date: eventDateTime, // ← Usar fecha/hora combinada del evento
@@ -425,12 +425,23 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       appBar: AppBar(
         title: const Text('Ingresar Asistencias'),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _canSubmit(userProvider) ? _recordAttendance : null,
         backgroundColor: _canSubmit(userProvider) ? null : Colors.grey,
-        icon: const Icon(Icons.save),
-        label: const Text('Registrar Asistencia'),
+        tooltip: 'Registrar Asistencia',
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.save, size: 18),
+            Text(
+              'Guardar',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat, // Mejor posicionamiento
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -657,7 +668,7 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
                       },
                     ),
                   ),
-            const SizedBox(height: 80), // Espacio extra para el FloatingActionButton
+            const SizedBox(height: 120), // Más espacio para el FloatingActionButton (levantado)
           ],
         ),
       ),

@@ -26,16 +26,40 @@ class AttendeeModel {
   factory AttendeeModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options) {
     final data = snapshot.data();
+    
+    // Verificar que los campos requeridos no sean null
+    if (data == null) {
+      throw Exception('Attendee data is null for document ${snapshot.id}');
+    }
+    
+    final type = data['type'] as String?;
+    final sectorId = data['sectorId'] as String?;
+    final createdByUserId = data['createdByUserId'] as String?;
+    final createdAt = data['createdAt'] as Timestamp?;
+    
+    if (type == null || type.isEmpty) {
+      throw Exception('Attendee type is null or empty for document ${snapshot.id}');
+    }
+    if (sectorId == null || sectorId.isEmpty) {
+      throw Exception('Attendee sectorId is null or empty for document ${snapshot.id}');
+    }
+    if (createdByUserId == null || createdByUserId.isEmpty) {
+      throw Exception('Attendee createdByUserId is null or empty for document ${snapshot.id}');
+    }
+    if (createdAt == null) {
+      throw Exception('Attendee createdAt is null for document ${snapshot.id}');
+    }
+    
     return AttendeeModel(
       id: snapshot.id,
-      name: data?['name'],
-      lastName: data?['lastName'],
-      type: data?['type'],
-      sectorId: data?['sectorId'],
-      contactInfo: data?['contactInfo'],
-      createdAt: (data?['createdAt'] as Timestamp).toDate(),
-      createdByUserId: data?['createdByUserId'],
-      isActive: data?['isActive'] ?? true, // Leer el estado activo
+      name: data['name'] as String?,
+      lastName: data['lastName'] as String?,
+      type: type,
+      sectorId: sectorId,
+      contactInfo: data['contactInfo'] as String?,
+      createdAt: createdAt.toDate(),
+      createdByUserId: createdByUserId,
+      isActive: data['isActive'] ?? true, // Leer el estado activo
     );
   }
 

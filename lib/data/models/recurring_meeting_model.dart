@@ -24,15 +24,43 @@ class RecurringMeetingModel {
   factory RecurringMeetingModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options) {
     final data = snapshot.data();
+    
+    // Verificar que los campos requeridos no sean null
+    if (data == null) {
+      throw Exception('RecurringMeeting data is null for document ${snapshot.id}');
+    }
+    
+    final name = data['name'] as String?;
+    final time = data['time'] as String?;
+    final locationId = data['locationId'] as String?;
+    final createdByUserId = data['createdByUserId'] as String?;
+    final createdAt = data['createdAt'] as Timestamp?;
+    
+    if (name == null || name.isEmpty) {
+      throw Exception('RecurringMeeting name is null or empty for document ${snapshot.id}');
+    }
+    if (time == null || time.isEmpty) {
+      throw Exception('RecurringMeeting time is null or empty for document ${snapshot.id}');
+    }
+    if (locationId == null || locationId.isEmpty) {
+      throw Exception('RecurringMeeting locationId is null or empty for document ${snapshot.id}');
+    }
+    if (createdByUserId == null || createdByUserId.isEmpty) {
+      throw Exception('RecurringMeeting createdByUserId is null or empty for document ${snapshot.id}');
+    }
+    if (createdAt == null) {
+      throw Exception('RecurringMeeting createdAt is null for document ${snapshot.id}');
+    }
+    
     return RecurringMeetingModel(
       id: snapshot.id,
-      name: data?['name'],
-      daysOfWeek: (data?['daysOfWeek'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      time: data?['time'],
-      locationId: data?['locationId'],
-      createdByUserId: data?['createdByUserId'],
-      createdAt: (data?['createdAt'] as Timestamp).toDate(),
-      isActive: data?['isActive'] ?? true,
+      name: name,
+      daysOfWeek: (data['daysOfWeek'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      time: time,
+      locationId: locationId,
+      createdByUserId: createdByUserId,
+      createdAt: createdAt.toDate(),
+      isActive: data['isActive'] ?? true,
     );
   }
 

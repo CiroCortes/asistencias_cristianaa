@@ -23,6 +23,9 @@ import 'package:asistencias_app/data/models/user_model.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/core/utils/date_utils.dart';
+import 'dart:io';
+import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -33,6 +36,539 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedIndex = 0;
+  
+  // Método para mostrar debug en tiempo real (pantalla + terminal)
+  void _showDebugSnackBar(String message) {
+    // Imprimir en terminal/consola
+    print('🔷 DEBUG: $message');
+    
+    // Mostrar en pantalla
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
+  }
+  
+  // Método para generar datos de prueba (solo para ciro.720@gmail.com)
+  Future<void> _generateTestData(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text("Generando datos de prueba..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      await _executeTestDataScript();
+      if (mounted) {
+        Navigator.pop(context); // Cerrar diálogo de carga
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Datos de prueba generados exitosamente para Quilicura'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Cerrar diálogo de carga
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error al generar datos: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  // Método para limpiar datos inconsistentes de Firestore
+  Future<void> _cleanupData(BuildContext context, String cleanupType) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text("Ejecutando limpieza..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      await _executeCleanupScript(cleanupType);
+      if (mounted) {
+        Navigator.pop(context); // Cerrar diálogo de carga
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Limpieza completada exitosamente'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Cerrar diálogo de carga
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error en limpieza: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
+  }
+
+  // Ejecutar script de limpieza con diferentes opciones
+  Future<void> _executeCleanupScript(String cleanupType) async {
+    print('\n🧹 ===== INICIANDO LIMPIEZA DE DATOS =====');
+    print('📋 Tipo de limpieza: $cleanupType');
+    
+    final firestore = FirebaseFirestore.instance;
+    int deletedRecords = 0;
+    int deletedAttendees = 0;
+    int deletedMeetings = 0;
+    
+    try {
+      if (cleanupType == 'analyze') {
+        // ANÁLISIS: Solo contar y mostrar información sin eliminar
+        _showDebugSnackBar('🔍 Analizando datos...');
+        
+        // Analizar registros de asistencia
+        final allRecords = await firestore.collection('attendanceRecords').get();
+        final testRecords = allRecords.docs.where((doc) {
+          final data = doc.data();
+          return data['recordedByUserId'] == 'test-admin-quilicura' ||
+                 (data['createdByUserId'] != null && data['createdByUserId'] == 'test-admin-quilicura');
+        }).toList();
+        
+        // Analizar asistentes
+        final allAttendees = await firestore.collection('attendees').get();
+        final testAttendees = allAttendees.docs.where((doc) {
+          final data = doc.data();
+          final name = data['name'] ?? '';
+          return data['createdByUserId'] == 'test-admin-quilicura' ||
+                 name.contains('TEST') ||
+                 name.contains('test');
+        }).toList();
+        
+        // Analizar meetings
+        final allMeetings = await firestore.collection('recurring_meetings').get();
+        final testMeetings = allMeetings.docs.where((doc) {
+          final data = doc.data();
+          return data['createdByUserId'] == 'test-admin-quilicura';
+        }).toList();
+        
+        print('\n📊 ===== ANÁLISIS DE DATOS =====');
+        print('📋 Registros de asistencia:');
+        print('   • Total: ${allRecords.docs.length}');
+        print('   • TEST/Problemáticos: ${testRecords.length}');
+        print('👥 Asistentes:');
+        print('   • Total: ${allAttendees.docs.length}');
+        print('   • TEST/Problemáticos: ${testAttendees.length}');
+        print('📅 Meetings recurrentes:');
+        print('   • Total: ${allMeetings.docs.length}');
+        print('   • TEST/Problemáticos: ${testMeetings.length}');
+        
+        _showDebugSnackBar('📊 Análisis completado - Ver consola para detalles');
+        return;
+      }
+      
+      // LIMPIEZA DE REGISTROS DE ASISTENCIA
+      _showDebugSnackBar('🗑️ Paso 1: Limpiando registros de asistencia...');
+      
+      if (cleanupType == 'full') {
+        // Eliminar TODOS los registros de asistencia
+        final recordsQuery = await firestore.collection('attendanceRecords').get();
+        for (final doc in recordsQuery.docs) {
+          await doc.reference.delete();
+          deletedRecords++;
+        }
+        _showDebugSnackBar('✅ Eliminados $deletedRecords registros de asistencia');
+      } else {
+        // Solo eliminar registros TEST (buscar por ambos campos para compatibilidad)
+        final testRecords1 = await firestore
+            .collection('attendanceRecords')
+            .where('recordedByUserId', isEqualTo: 'test-admin-quilicura')
+            .get();
+        
+        final testRecords2 = await firestore
+            .collection('attendanceRecords')
+            .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
+            .get();
+        
+        // Combinar resultados evitando duplicados
+        final allTestRecords = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+        for (final doc in testRecords1.docs) {
+          allTestRecords[doc.id] = doc;
+        }
+        for (final doc in testRecords2.docs) {
+          allTestRecords[doc.id] = doc;
+        }
+        
+        print('📊 Registros TEST encontrados: ${allTestRecords.length}');
+        
+        for (final doc in allTestRecords.values) {
+          await doc.reference.delete();
+          deletedRecords++;
+        }
+        
+        _showDebugSnackBar('✅ Eliminados $deletedRecords registros de asistencia TEST');
+      }
+      
+      // LIMPIEZA DE ASISTENTES (solo para 'test' y 'full')
+      if (cleanupType != 'analyze') {
+        _showDebugSnackBar('👥 Paso 2: Limpiando asistentes...');
+        
+        if (cleanupType == 'full') {
+          // Eliminar TODOS los asistentes (¡CUIDADO!)
+          final allAttendees = await firestore.collection('attendees').get();
+          for (final doc in allAttendees.docs) {
+            await doc.reference.delete();
+            deletedAttendees++;
+          }
+        } else {
+          // Solo eliminar asistentes TEST
+          final testAttendees = await firestore
+              .collection('attendees')
+              .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
+              .get();
+          
+          for (final doc in testAttendees.docs) {
+            await doc.reference.delete();
+            deletedAttendees++;
+          }
+        }
+        
+        _showDebugSnackBar('✅ Eliminados $deletedAttendees asistentes');
+      }
+      
+      // LIMPIEZA DE MEETINGS RECURRENTES (solo TEST)
+      if (cleanupType != 'analyze') {
+        _showDebugSnackBar('📅 Paso 3: Limpiando meetings recurrentes TEST...');
+        
+        final testMeetings = await firestore
+            .collection('recurring_meetings')
+            .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
+            .get();
+        
+        for (final doc in testMeetings.docs) {
+          await doc.reference.delete();
+          deletedMeetings++;
+        }
+        
+        _showDebugSnackBar('✅ Eliminados $deletedMeetings meetings TEST');
+      }
+      
+      // RESUMEN FINAL
+      print('\n🎉 ===== LIMPIEZA COMPLETADA =====');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('📊 ELIMINADOS:');
+      print('  📋 Registros de asistencia: $deletedRecords');
+      print('  👥 Asistentes: $deletedAttendees');
+      print('  📅 Meetings recurrentes: $deletedMeetings');
+      print('  💰 Costo Firebase: ~\$${(deletedRecords + deletedAttendees + deletedMeetings) * 0.0001} USD');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('✅ Base de datos limpia. Los gráficos deberían funcionar correctamente.');
+      
+    } catch (e) {
+      print('❌ ERROR durante limpieza: $e');
+      throw e;
+    }
+  }
+
+  // Ejecutar el script de generación de datos de prueba con debug
+  Future<void> _executeTestDataScript() async {
+    print('\n📋 ===== INICIANDO GENERACIÓN DE DATOS DE PRUEBA =====');
+    
+    final firestore = FirebaseFirestore.instance;
+    final random = Random();
+    const adminUserId = 'test-admin-quilicura';
+    
+    try {
+      // DEBUG: Mostrar información paso a paso
+      _showDebugSnackBar('🔍 Paso 1: Buscando ruta Quilicura...');
+      
+      // 1. Usar directamente el ID conocido de Quilicura
+      const quilicuraId = 'QsszuqTZk0QDKHN8iTj6';
+      print('🎯 Buscando commune con ID: $quilicuraId');
+      
+      final quilicuraDoc = await firestore.collection('communes').doc(quilicuraId).get();
+      print('📄 Documento obtenido. Existe: ${quilicuraDoc.exists}');
+      
+      if (!quilicuraDoc.exists) {
+        print('❌ ERROR: El documento no existe en Firebase');
+        throw Exception('El documento Quilicura no existe en Firebase');
+      }
+      
+      final quilicuraData = quilicuraDoc.data()!;
+      print('📊 Datos del documento: $quilicuraData');
+      
+      final quilicuraName = quilicuraData['name'] ?? 'Sin nombre';
+      final cityId = quilicuraData['cityId'] ?? 'Sin ciudad';
+      final locationIds = List<String>.from(quilicuraData['locationIds'] ?? []);
+      
+      print('✅ Quilicura procesada:');
+      print('   - Nombre: "$quilicuraName"');
+      print('   - CityId: $cityId');
+      print('   - LocationIds: $locationIds');
+      print('   - Total sectores en array: ${locationIds.length}');
+      
+      _showDebugSnackBar('✅ Quilicura encontrada: "$quilicuraName" (${locationIds.length} sectores)');
+      
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // 2. Obtener sectores de Quilicura
+      print('\n🗺️ ===== PASO 2: BUSCANDO SECTORES =====');
+      _showDebugSnackBar('🔍 Paso 2: Buscando sectores de Quilicura...');
+      
+      print('🔍 Consultando collection "locations" con communeId = $quilicuraId');
+      
+      final sectorsQuery = await firestore
+          .collection('locations')
+          .where('communeId', isEqualTo: quilicuraId)
+          .get();
+      
+      print('📊 Query ejecutada. Documentos encontrados: ${sectorsQuery.docs.length}');
+      
+      if (sectorsQuery.docs.isEmpty) {
+        print('❌ ERROR: No se encontraron sectores para communeId: $quilicuraId');
+        
+        // DEBUG: Listar todos los sectores disponibles
+        print('🔍 Investigando todos los sectores disponibles...');
+        final allLocationsQuery = await firestore.collection('locations').get();
+        print('📋 Total sectores en DB: ${allLocationsQuery.docs.length}');
+        
+        for (final doc in allLocationsQuery.docs) {
+          final data = doc.data();
+          print('   • ID: ${doc.id} | CommuneId: "${data['communeId']}" | Name: "${data['name']}"');
+        }
+        
+        throw Exception('No se encontraron sectores en Quilicura');
+      }
+      
+      final sectors = sectorsQuery.docs;
+      print('✅ Sectores encontrados: ${sectors.length}');
+      
+      // DEBUG: Mostrar todos los sectores encontrados
+      for (int i = 0; i < sectors.length; i++) {
+        final sectorData = sectors[i].data();
+        final sectorName = sectorData['name'] ?? 'Sin nombre';
+        final sectorId = sectors[i].id;
+        print('   📍 Sector ${i + 1}: "$sectorName" (ID: $sectorId)');
+      }
+      
+      int totalAttendees = 0;
+      
+      // 3. Generar 10 asistentes por sector
+      print('\n👥 ===== PASO 3: GENERANDO ASISTENTES =====');
+      _showDebugSnackBar('👥 Paso 3: Generando asistentes TEST...');
+      await Future.delayed(const Duration(seconds: 1));
+      
+      int sectorCount = 0;
+      
+      for (final sector in sectors) {
+        sectorCount++;
+        final sectorId = sector.id;
+        final sectorName = sector.data()['name'] ?? 'Sector ${sector.id}';
+        
+        print('📝 Sector $sectorCount/${sectors.length}: "$sectorName" (ID: $sectorId)');
+        _showDebugSnackBar('📝 Creando 10 asistentes para: $sectorName');
+        
+        for (int i = 1; i <= 10; i++) {
+          final attendeeData = {
+            'firstName': 'TEST Nombre$i',
+            'lastName': 'TEST Apellido$i $sectorName',
+            'phone': '+569${1000 + random.nextInt(9000)}${1000 + random.nextInt(9000)}',
+            'address': 'TEST Dirección $i, $sectorName, Quilicura',
+            'sectorId': sectorId,
+            'isActive': true,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'createdByUserId': adminUserId,
+          };
+          
+          print('   👤 Creando asistente $i/10: ${attendeeData['firstName']} ${attendeeData['lastName']}');
+          
+          await firestore.collection('attendees').add(attendeeData);
+          totalAttendees++;
+        }
+        
+        print('✅ Completado sector "$sectorName": 10 asistentes creados');
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      
+      print('🎉 TOTAL ASISTENTES CREADOS: $totalAttendees');
+      _showDebugSnackBar('✅ Creados $totalAttendees asistentes TEST');
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // 4. Generar registros de asistencia para junio y julio 2025
+      print('\n📊 ===== PASO 4: GENERANDO REGISTROS DE ASISTENCIA =====');
+      _showDebugSnackBar('📊 Paso 4: Generando registros de asistencia...');
+      await Future.delayed(const Duration(seconds: 1));
+      
+      print('🔍 Buscando asistentes TEST creados (createdByUserId = $adminUserId)');
+      
+      final attendeesQuery = await firestore
+          .collection('attendees')
+          .where('createdByUserId', isEqualTo: adminUserId)
+          .get();
+      
+      final allAttendees = attendeesQuery.docs;
+      print('👥 Asistentes TEST encontrados: ${allAttendees.length}');
+      _showDebugSnackBar('👥 Encontrados ${allAttendees.length} asistentes TEST');
+      
+      if (allAttendees.isEmpty) {
+        throw Exception('No se encontraron asistentes TEST creados previamente');
+      }
+      
+      // Fechas para junio y julio 2025
+      final meetingDates = <DateTime>[];
+      
+      // Junio 2025
+      meetingDates.addAll([
+        DateTime(2025, 6, 4, 19, 30), DateTime(2025, 6, 11, 19, 30),
+        DateTime(2025, 6, 18, 19, 30), DateTime(2025, 6, 25, 19, 30),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 6, 7, 10, 0), DateTime(2025, 6, 14, 10, 0),
+        DateTime(2025, 6, 21, 10, 0), DateTime(2025, 6, 28, 10, 0),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 6, 1, 10, 0), DateTime(2025, 6, 8, 10, 0),
+        DateTime(2025, 6, 15, 10, 0), DateTime(2025, 6, 22, 10, 0), DateTime(2025, 6, 29, 10, 0),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 6, 1, 16, 0), DateTime(2025, 6, 8, 16, 0),
+        DateTime(2025, 6, 15, 16, 0), DateTime(2025, 6, 22, 16, 0), DateTime(2025, 6, 29, 16, 0),
+      ]);
+      
+      // Julio 2025
+      meetingDates.addAll([
+        DateTime(2025, 7, 2, 19, 30), DateTime(2025, 7, 9, 19, 30),
+        DateTime(2025, 7, 16, 19, 30), DateTime(2025, 7, 23, 19, 30), DateTime(2025, 7, 30, 19, 30),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 7, 5, 10, 0), DateTime(2025, 7, 12, 10, 0),
+        DateTime(2025, 7, 19, 10, 0), DateTime(2025, 7, 26, 10, 0),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 7, 6, 10, 0), DateTime(2025, 7, 13, 10, 0),
+        DateTime(2025, 7, 20, 10, 0), DateTime(2025, 7, 27, 10, 0),
+      ]);
+      meetingDates.addAll([
+        DateTime(2025, 7, 6, 16, 0), DateTime(2025, 7, 13, 16, 0),
+        DateTime(2025, 7, 20, 16, 0), DateTime(2025, 7, 27, 16, 0),
+      ]);
+      
+      int totalRecords = 0;
+      int processedSectors = 0;
+      
+      // 5. Generar registros de asistencia
+      print('\n📅 ===== PASO 5: GENERANDO REGISTROS DE ASISTENCIA =====');
+      print('📊 Total fechas de reuniones jun-jul 2025: ${meetingDates.length}');
+      _showDebugSnackBar('📅 Generando registros para jun-jul 2025...');
+      
+      for (final sector in sectors) {
+        final sectorId = sector.id;
+        final sectorName = sector.data()['name'] ?? 'Sector';
+        final sectorAttendees = allAttendees.where(
+          (attendee) => attendee.data()['sectorId'] == sectorId
+        ).toList();
+        
+        processedSectors++;
+        print('⏳ Sector $processedSectors/${sectors.length}: "$sectorName" (${sectorAttendees.length} asistentes)');
+        _showDebugSnackBar('⏳ Procesando sector $processedSectors/${sectors.length}: $sectorName');
+        
+        int sectorRecords = 0;
+        
+        for (final date in meetingDates) {
+          String meetingType;
+          if (date.weekday == 3 && date.hour == 19) {
+            meetingType = 'culto_miercoles';
+          } else if (date.weekday == 6 && date.hour == 10) {
+            meetingType = 'ttl_sabado';
+          } else if (date.weekday == 7 && date.hour == 10) {
+            meetingType = 'culto_domingo_manana';
+          } else {
+            meetingType = 'culto_domingo_tarde';
+          }
+          
+          // Seleccionar asistentes (70-90% asistencia)
+          final attendanceRate = 0.7 + (random.nextDouble() * 0.2);
+          final attendingCount = (sectorAttendees.length * attendanceRate).round();
+          final attendingAttendees = sectorAttendees.take(attendingCount).toList();
+          
+          for (final attendee in attendingAttendees) {
+            final recordData = {
+              'attendeeId': attendee.id,
+              'meetingType': meetingType,
+              'attendanceDate': Timestamp.fromDate(date),
+              'sectorId': sectorId,
+              'notes': 'Registro de prueba generado automáticamente',
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+              'createdByUserId': adminUserId,
+            };
+            
+            await firestore.collection('attendanceRecords').add(recordData);
+            totalRecords++;
+            sectorRecords++;
+          }
+        }
+        
+        print('   ✅ Sector "$sectorName" completado: $sectorRecords registros creados');
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      // Debug final
+      print('\n🎉 ===== PROCESO COMPLETADO =====');
+      print('📊 RESUMEN FINAL:');
+      print('   👥 Asistentes TEST creados: $totalAttendees');
+      print('   📅 Registros de asistencia: $totalRecords');
+      print('   🏙️  Ruta: Quilicura');
+      print('   📍 Sectores procesados: ${sectors.length}');
+      print('   💰 Costo estimado Firebase: < \$0.002 USD');
+      
+      _showDebugSnackBar('🎉 ¡COMPLETADO! Asistentes: $totalAttendees | Registros: $totalRecords');
+    } catch (e) {
+      print('❌ ERROR GENERAL en generación de datos: $e');
+      print('📍 Stack trace: ${StackTrace.current}');
+      _showDebugSnackBar('❌ ERROR: $e');
+      rethrow;
+    }
+  }
 
   static final List<Widget> _widgetOptions = <Widget>[
     // Contenido del Tab de Inicio (Dashboard actual)
@@ -240,6 +776,112 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       builder: (context) => const QuarterlyTTLReportScreen(),
                     ),
                   );
+                },
+              ),
+            // Opción de datos de prueba (solo para ciro.720@gmail.com)
+            if (user.email == 'ciro.720@gmail.com')
+              ListTile(
+                leading: const Icon(Icons.science, color: Colors.orange),
+                title: const Text('🧪 Generar Datos de Prueba'),
+                subtitle: const Text('Quilicura - Jun/Jul 2025'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  
+                  // Mostrar confirmación
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('🧪 Generar Datos de Prueba'),
+                      content: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Esto generará en la ruta QUILICURA:'),
+                          SizedBox(height: 8),
+                          Text('• 80 asistentes TEST (10 por sector)'),
+                          Text('• ~800 registros de asistencia jun-jul 2025'),
+                          Text('• Datos realistas para dashboards'),
+                          SizedBox(height: 16),
+                          Text('💰 Costo Firebase: < \$0.002 USD'),
+                          SizedBox(height: 8),
+                          Text('🔍 Verás el progreso paso a paso', 
+                               style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text('⚠️ Solo usar para demo con cliente', 
+                               style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('🚀 Generar'),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (confirm == true) {
+                    await _generateTestData(context);
+                  }
+                },
+              ),
+            // Opción de limpieza de datos (solo para administradores)
+            if (PermissionUtils.canManageUsers(user))
+              ListTile(
+                leading: const Icon(Icons.cleaning_services, color: Colors.red),
+                title: const Text('🧹 Limpiar Datos Inconsistentes'),
+                subtitle: const Text('Eliminar registros malformados'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  
+                  // Mostrar confirmación con opciones
+                  final option = await showDialog<String>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('🧹 Limpiar Datos Inconsistentes'),
+                      content: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Selecciona qué tipo de limpieza realizar:'),
+                          SizedBox(height: 12),
+                          Text('• Limpieza Completa: Elimina TODOS los registros de asistencia'),
+                          Text('• Limpieza de Prueba: Solo registros TEST y malformados'),
+                          Text('• Análisis: Revisar datos sin eliminar'),
+                          SizedBox(height: 16),
+                          Text('⚠️ Esta acción no se puede deshacer', 
+                               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, null),
+                          child: const Text('Cancelar'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, 'analyze'),
+                          child: const Text('📊 Analizar'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, 'test'),
+                          child: const Text('🧪 Solo TEST'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, 'full'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          child: const Text('🗑️ Completa'),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (option != null) {
+                    await _cleanupData(context, option);
+                  }
                 },
               ),
             ListTile(
@@ -505,12 +1147,12 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                            Text(
                                   'Semana $currentWeek: $currentWeekAttendance',
-                                  style: TextStyle(
+                              style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).primaryColor),
+                                  color: Theme.of(context).primaryColor),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -540,9 +1182,9 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                       color: currentWeekAttendance >= previousWeekAttendance 
                                           ? Colors.green 
                                           : Colors.red,
-                                    ),
-                                  ],
-                                ),
+                            ),
+                          ],
+                        ),
                               ],
                             ),
                           ],
@@ -600,7 +1242,7 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Text(
-                              'TTL SAB',
+                              'TTL SABADO',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
                             ),
                             Text(
@@ -692,15 +1334,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                 SizedBox(
                   height: 250,
                   child: BarChart(
-                        BarChartData(
+                    BarChartData(
                           alignment: BarChartAlignment.spaceEvenly,
-                          maxY: [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 10,
+                          maxY: [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 25,
                           barTouchData: BarTouchData(
                             enabled: false, // Desactivado porque tooltips están siempre visibles
                             touchTooltipData: BarTouchTooltipData(
                               tooltipBgColor: Colors.transparent, // Sin fondo
                               tooltipRoundedRadius: 0,
-                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                 String value = '';
                                 switch (group.x) {
@@ -725,31 +1367,31 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                               },
                             ),
                           ),
-                          titlesData: FlTitlesData(
-                            leftTitles: const AxisTitles(
+                      titlesData: FlTitlesData(
+                        leftTitles: const AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  switch (value.toInt()) {
-                                    case 0:
-                                      return const Text('Miembros');
-                                    case 1:
-                                      return const Text('Oyentes');
-                                    case 2:
-                                      return const Text('Visitas');
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
-                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              switch (value.toInt()) {
+                                case 0:
+                                  return const Text('Miembros');
+                                case 1:
+                                  return const Text('Oyentes');
+                                case 2:
+                                  return const Text('Visitas');
+                              }
+                              return const Text('');
+                            },
                           ),
-                          borderData: FlBorderData(show: false),
-                          barGroups: [
+                        ),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: [
                             BarChartGroupData(
                               x: 0, 
                               showingTooltipIndicators: [0], // Siempre mostrar tooltip
@@ -780,10 +1422,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                 borderRadius: BorderRadius.circular(4),
                               )]
                             ),
-                          ],
-                        ),
-                                              ),
+                      ],
+                    ),
                   ),
+                ),
                 const SizedBox(height: 32),
                 // Calcular total semanal para el subtítulo
                 Builder(
@@ -953,11 +1595,11 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
       crossAxisAlignment: CrossAxisAlignment.start,
           children: [
         Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Asistencia Total por Sector',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        const Text(
+          'Asistencia Total por Sector',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1022,17 +1664,17 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                 final hasValidData = entries.isNotEmpty;
                 
                 return BarChart(
-                  BarChartData(
+              BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
-                    maxY: sectorAttendance.values.isNotEmpty 
-                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) 
-                        : 10,
+                maxY: sectorAttendance.values.isNotEmpty 
+                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 20) 
+                    : 10,
                     barTouchData: BarTouchData(
                       enabled: false, // Tooltips siempre visibles
                       touchTooltipData: BarTouchTooltipData(
                         tooltipBgColor: Colors.transparent,
                         tooltipRoundedRadius: 0,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final index = group.x.toInt();
                           
@@ -1053,10 +1695,10 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                       ),
                     ),
                     barGroups: entries
-                        .asMap()
-                        .entries
-                        .map((entry) => BarChartGroupData(
-                              x: entry.key,
+                    .asMap()
+                    .entries
+                    .map((entry) => BarChartGroupData(
+                          x: entry.key,
                               showingTooltipIndicators: hasValidData ? [0] : [], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: entry.value.value.toDouble(), 
@@ -1064,16 +1706,16 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                                 width: 40,
                                 borderRadius: BorderRadius.circular(4),
                               )],
-                            ))
-                        .toList(),
-                    titlesData: FlTitlesData(
+                        ))
+                    .toList(),
+                titlesData: FlTitlesData(
                       leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
                           reservedSize: 60,
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
                             
                             if (!hasValidData || index < 0 || index >= entries.length) {
                               return const SizedBox.shrink();
@@ -1083,24 +1725,24 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                               padding: const EdgeInsets.only(top: 8),
                               child: Transform.rotate(
                                 angle: -0.5,
-                                child: Text(
+                          child: Text(
                                   entries[index].key,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                            overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          ),
+                        );
+                      },
                     ),
-                    borderData: FlBorderData(show: false),
                   ),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+              ),
                 );
               },
             ),
@@ -1180,13 +1822,13 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceEvenly,
-        maxY: maxValue.toDouble() + 5,
+        maxY: maxValue.toDouble() + 20,
         barTouchData: BarTouchData(
           enabled: false, // Tooltips siempre visibles
           touchTooltipData: BarTouchTooltipData(
             tooltipBgColor: Colors.transparent, // Sin fondo
             tooltipRoundedRadius: 0,
-            tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final communeId = allCommuneEntries[group.x.toInt()].key;
               final value = communeAttendance[communeId] ?? 0;

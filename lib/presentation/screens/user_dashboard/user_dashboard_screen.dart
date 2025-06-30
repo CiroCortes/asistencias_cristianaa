@@ -12,6 +12,7 @@ import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/core/utils/date_utils.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserDashboardScreen extends StatefulWidget {
   const UserDashboardScreen({super.key});
@@ -252,8 +253,50 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
 }
 
 // Extraer el contenido del dashboard original en un widget separado
-class _HomeDashboardContent extends StatelessWidget {
+class _HomeDashboardContent extends StatefulWidget {
   const _HomeDashboardContent();
+
+  @override
+  State<_HomeDashboardContent> createState() => _HomeDashboardContentState();
+}
+
+class _HomeDashboardContentState extends State<_HomeDashboardContent> {
+  String? _sectorName;
+  bool _loadingSectorName = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userProvider = context.read<UserProvider>();
+      final user = userProvider.user;
+      if (user?.sectorId != null) {
+        _fetchSectorName(user!.sectorId!);
+      }
+    });
+  }
+
+  Future<void> _fetchSectorName(String sectorId) async {
+    setState(() { _loadingSectorName = true; });
+    try {
+      final doc = await FirebaseFirestore.instance.collection('locations').doc(sectorId).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _sectorName = doc.data()!["name"] ?? sectorId;
+        });
+      } else if (mounted) {
+        setState(() { _sectorName = sectorId; });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() { _sectorName = sectorId; });
+      }
+    } finally {
+      if (mounted) {
+        setState(() { _loadingSectorName = false; });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -357,9 +400,13 @@ class _HomeDashboardContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Resumen',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Text(
+                _loadingSectorName 
+                    ? 'RESUMEN' 
+                    : _sectorName != null 
+                        ? 'RESUMEN ($_sectorName)' 
+                        : 'RESUMEN',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Row(
@@ -504,7 +551,7 @@ class _HomeDashboardContent extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Text(
-                              'TTL SAB',
+                              'TTL SABADO',
                               style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
@@ -582,9 +629,9 @@ class _HomeDashboardContent extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Asistencia por Semana', style: TextStyle(fontWeight: FontWeight.bold)),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Asistencia por Semana', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text(
                             'Total mensual: $monthlyTotal',
                             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -598,13 +645,13 @@ class _HomeDashboardContent extends StatelessWidget {
                             : BarChart(
                                 BarChartData(
                                   alignment: BarChartAlignment.spaceAround,
-                                  maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 5) : 10,
+                                  maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 20) : 10,
                                   barTouchData: BarTouchData(
                                     enabled: false, // Desactivado porque tooltips están siempre visibles
                                     touchTooltipData: BarTouchTooltipData(
                                       tooltipBgColor: Colors.transparent, // Sin fondo
                                       tooltipRoundedRadius: 0,
-                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                         final value = weekAttendance[group.x.toInt()] ?? 0;
                                         return BarTooltipItem(
@@ -645,13 +692,13 @@ class _HomeDashboardContent extends StatelessWidget {
               const SizedBox(height: 24),
               // Nuevo gráfico TTL Semanal por Tipo
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   Text(
                     'TTL Semanal por Tipo - Semana $currentWeek',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  Text(
+                      Text(
                     'Total: $totalByType',
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
@@ -663,13 +710,13 @@ class _HomeDashboardContent extends StatelessWidget {
                 child: BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
-                    maxY: [weeklyMembers, weeklyListeners, weeklyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 10,
+                    maxY: [weeklyMembers, weeklyListeners, weeklyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 25,
                     barTouchData: BarTouchData(
                       enabled: false, // Desactivado porque tooltips están siempre visibles
                       touchTooltipData: BarTouchTooltipData(
                         tooltipBgColor: Colors.transparent, // Sin fondo
                         tooltipRoundedRadius: 0,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           String value = '';
                           switch (group.x) {

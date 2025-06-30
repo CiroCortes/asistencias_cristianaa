@@ -6,6 +6,7 @@ import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AttendeesScreen extends StatefulWidget {
   const AttendeesScreen({super.key});
@@ -31,6 +32,9 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
   City? _filterCity;
   Commune? _filterCommune;
   Location? _filterLocation;
+  
+  // Variable para mostrar el nombre del sector del usuario
+  String? _userSectorName;
 
   @override
   void initState() {
@@ -39,8 +43,27 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       final userProvider = context.read<UserProvider>();
       if (userProvider.isAdmin) {
         context.read<LocationProvider>().loadCities();
+      } else if (userProvider.user?.sectorId != null) {
+        _fetchUserSectorName(userProvider.user!.sectorId!);
       }
     });
+  }
+
+  Future<void> _fetchUserSectorName(String sectorId) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('locations').doc(sectorId).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _userSectorName = doc.data()!["name"] ?? sectorId;
+        });
+      } else if (mounted) {
+        setState(() { _userSectorName = sectorId; });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() { _userSectorName = sectorId; });
+      }
+    }
   }
 
   @override
@@ -135,7 +158,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
     }
   }
 
-  void _showAddEditAttendeeDialog([AttendeeModel? attendeeToEdit]) {
+  void _showAddEditAttendeeDialog([AttendeeModel? attendeeToEdit]) async {
     final userProvider = context.read<UserProvider>();
     final locationProvider = context.read<LocationProvider>();
     final attendeeProvider = context.read<AttendeeProvider>();
@@ -146,6 +169,11 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         const SnackBar(content: Text('No tienes permisos para gestionar asistentes.')),
       );
       return;
+    }
+
+    // Cargar el nombre del sector para usuarios no-admin ANTES de abrir el diálogo
+    if (!userProvider.isAdmin && userProvider.user?.sectorId != null) {
+      await _fetchUserSectorName(userProvider.user!.sectorId!);
     }
 
     // Reset form state
@@ -335,8 +363,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     const Text('Asistente será asignado al sector:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Text(
-                      userProvider.user?.sectorId ?? 'N/A',
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      _userSectorName ?? userProvider.user?.sectorId ?? 'N/A',
+                      style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -544,6 +572,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                 }
 
                 return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 120), // Espacio para el FloatingActionButton
                   itemCount: displayAttendees.length,
                   itemBuilder: (context, index) {
                     final attendee = displayAttendees[index];
@@ -610,12 +639,23 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         heroTag: "attendees_fab",
         onPressed: () => _showAddEditAttendeeDialog(),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Añadir Asistente'),
+        tooltip: 'Añadir Asistente',
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_add, size: 18),
+            Text(
+              'Agregar',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

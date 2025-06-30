@@ -26,14 +26,38 @@ class AttendanceRecordModel {
   factory AttendanceRecordModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options) {
     final data = snapshot.data();
+    
+    // Verificar que los campos requeridos no sean null
+    if (data == null) {
+      throw Exception('AttendanceRecord data is null for document ${snapshot.id}');
+    }
+    
+    final sectorId = data['sectorId'] as String?;
+    final meetingType = data['meetingType'] as String?;
+    final recordedByUserId = data['recordedByUserId'] as String?;
+    final date = data['date'] as Timestamp?;
+    
+    if (sectorId == null || sectorId.isEmpty) {
+      throw Exception('AttendanceRecord sectorId is null or empty for document ${snapshot.id}');
+    }
+    if (meetingType == null || meetingType.isEmpty) {
+      throw Exception('AttendanceRecord meetingType is null or empty for document ${snapshot.id}');
+    }
+    if (recordedByUserId == null || recordedByUserId.isEmpty) {
+      throw Exception('AttendanceRecord recordedByUserId is null or empty for document ${snapshot.id}');
+    }
+    if (date == null) {
+      throw Exception('AttendanceRecord date is null for document ${snapshot.id}');
+    }
+    
     return AttendanceRecordModel(
       id: snapshot.id,
-      sectorId: data?['sectorId'],
-      date: (data?['date'] as Timestamp).toDate(),
-      meetingType: data?['meetingType'],
-      attendedAttendeeIds: List<String>.from(data?['attendedAttendeeIds'] ?? []),
-      visitorCount: data?['visitorCount'] ?? 0,
-      recordedByUserId: data?['recordedByUserId'],
+      sectorId: sectorId,
+      date: date.toDate(),
+      meetingType: meetingType,
+      attendedAttendeeIds: List<String>.from(data['attendedAttendeeIds'] ?? []),
+      visitorCount: data['visitorCount'] ?? 0,
+      recordedByUserId: recordedByUserId,
     );
   }
 
