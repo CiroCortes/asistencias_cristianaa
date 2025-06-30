@@ -638,28 +638,33 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           ),
                         ],
                       ),
-                      SizedBox(
-                        height: 200,
+                      Container(
+                        height: 240, // Altura aumentada para acomodar tooltips
+                        padding: const EdgeInsets.only(top: 20, bottom: 15, left: 12, right: 12), // Padding interno
                         child: weekAttendance.isEmpty
                             ? const Center(child: Text('No hay datos de asistencia para este mes.'))
                             : BarChart(
                                 BarChartData(
                                   alignment: BarChartAlignment.spaceAround,
-                                  maxY: weekAttendance.values.isNotEmpty ? (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 20) : 10,
+                                  // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                                  maxY: weekAttendance.values.isNotEmpty ? 
+                                      (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() * 1.15) : 10,
                                   barTouchData: BarTouchData(
                                     enabled: false, // Desactivado porque tooltips están siempre visibles
                                     touchTooltipData: BarTouchTooltipData(
-                                      tooltipBgColor: Colors.transparent, // Sin fondo
-                                      tooltipRoundedRadius: 0,
-                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                      tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+                                      tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                                      tooltipRoundedRadius: 4,
+                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      tooltipMargin: 8,
                                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                         final value = weekAttendance[group.x.toInt()] ?? 0;
                                         return BarTooltipItem(
                                           '$value',
-                                          const TextStyle(
-                                            color: Colors.black,
+                                          TextStyle(
+                                            color: Colors.blue.shade700,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                            fontSize: 13,
                                           ),
                                         );
                                       },
@@ -670,18 +675,40 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                     showingTooltipIndicators: [0], // Siempre mostrar tooltip
                                     barRods: [BarChartRodData(
                                       toY: e.value.toDouble(), 
-                                      color: Colors.blue,
-                                      width: 40,
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: Colors.blue.shade600,
+                                      width: 35,
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(4),
+                                        topRight: Radius.circular(4),
+                                      ),
                                     )]
                                   )).toList(),
                                   titlesData: FlTitlesData(
                                     leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (value, meta) => Text('S${value.toInt()}'))),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 25,
+                                        getTitlesWidget: (value, meta) => Text(
+                                          'S${value.toInt()}',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ),
                                     rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                   ),
                                   borderData: FlBorderData(show: false),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    drawVerticalLine: false,
+                                    horizontalInterval: weekAttendance.values.isNotEmpty ? 
+                                        (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() / 4).ceilToDouble() : 5.0,
+                                    getDrawingHorizontalLine: (value) => FlLine(
+                                      color: Colors.grey.shade300,
+                                      strokeWidth: 0.5,
+                                    ),
+                                  ),
                                 ),
                               ),
                       ),
@@ -704,38 +731,51 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 250,
+              const SizedBox(height: 24), // Más espacio para el título
+              Container(
+                height: 280, // Altura aumentada para acomodar tooltips
+                padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
                 child: BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
-                    maxY: [weeklyMembers, weeklyListeners, weeklyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 25,
+                    // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                    maxY: () {
+                      final maxValue = [weeklyMembers, weeklyListeners, weeklyVisitors]
+                          .reduce((a, b) => a > b ? a : b).toDouble();
+                      return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                    }(),
                     barTouchData: BarTouchData(
                       enabled: false, // Desactivado porque tooltips están siempre visibles
                       touchTooltipData: BarTouchTooltipData(
-                        tooltipBgColor: Colors.transparent, // Sin fondo
-                        tooltipRoundedRadius: 0,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+                        tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                        tooltipRoundedRadius: 4,
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        // Offset para posicionar tooltip justo encima de la barra
+                        tooltipMargin: 8,
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           String value = '';
+                          Color color = Colors.black;
                           switch (group.x) {
                             case 0:
                               value = '$weeklyMembers';
+                              color = Colors.blue;
                               break;
                             case 1:
                               value = '$weeklyListeners';
+                              color = Colors.green;
                               break;
                             case 2:
                               value = '$weeklyVisitors';
+                              color = Colors.orange;
                               break;
                           }
                           return BarTooltipItem(
                             value,
-                            const TextStyle(
-                              color: Colors.black,
+                            TextStyle(
+                              color: color,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           );
                         },
@@ -748,14 +788,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
+                          reservedSize: 30, // Espacio reservado para etiquetas
                           getTitlesWidget: (value, meta) {
                             switch (value.toInt()) {
                               case 0:
-                                return const Text('Miembros');
+                                return const Text('Miembros', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                               case 1:
-                                return const Text('Oyentes');
+                                return const Text('Oyentes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                               case 2:
-                                return const Text('Visitas');
+                                return const Text('Visitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                             }
                             return const Text('');
                           },
@@ -765,15 +806,31 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
                     borderData: FlBorderData(show: false),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: () {
+                        final maxValue = [weeklyMembers, weeklyListeners, weeklyVisitors]
+                            .reduce((a, b) => a > b ? a : b).toDouble();
+                        return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+                      }(),
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: Colors.grey.shade300,
+                        strokeWidth: 0.5,
+                      ),
+                    ),
                     barGroups: [
                       BarChartGroupData(
                         x: 0, 
                         showingTooltipIndicators: [0], // Siempre mostrar tooltip
                         barRods: [BarChartRodData(
                           toY: weeklyMembers.toDouble(), 
-                          color: Colors.blue,
-                          width: 40,
-                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.blue.shade600,
+                          width: 35,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(4),
+                            topRight: Radius.circular(4),
+                          ),
                         )]
                       ),
                       BarChartGroupData(
@@ -781,9 +838,12 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         showingTooltipIndicators: [0], // Siempre mostrar tooltip
                         barRods: [BarChartRodData(
                           toY: weeklyListeners.toDouble(), 
-                          color: Colors.green,
-                          width: 40,
-                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.green.shade600,
+                          width: 35,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(4),
+                            topRight: Radius.circular(4),
+                          ),
                         )]
                       ),
                       BarChartGroupData(
@@ -791,9 +851,12 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         showingTooltipIndicators: [0], // Siempre mostrar tooltip
                         barRods: [BarChartRodData(
                           toY: weeklyVisitors.toDouble(), 
-                          color: Colors.orange,
-                          width: 40,
-                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.orange.shade600,
+                          width: 35,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(4),
+                            topRight: Radius.circular(4),
+                          ),
                         )]
                       ),
                     ],

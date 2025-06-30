@@ -14,6 +14,8 @@ class WeeklyAverageReportScreen extends StatefulWidget {
 
 class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
   String? selectedCommuneId;
+  int selectedYear = DateTime.now().year;
+  int? selectedMonth; // null significa "Todos los meses"
   bool _isLoading = true;
 
   @override
@@ -95,6 +97,34 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
     return Color.lerp(Colors.blue.shade50, Colors.blue.shade300, intensity)!;
   }
 
+  // Lista de años disponibles (últimos 5 años)
+  List<int> get _availableYears => List.generate(5, (index) => DateTime.now().year - index);
+
+  // Lista de meses
+  List<Map<String, dynamic>> get _months => [
+    {'value': 1, 'name': 'Enero'},
+    {'value': 2, 'name': 'Febrero'},
+    {'value': 3, 'name': 'Marzo'},
+    {'value': 4, 'name': 'Abril'},
+    {'value': 5, 'name': 'Mayo'},
+    {'value': 6, 'name': 'Junio'},
+    {'value': 7, 'name': 'Julio'},
+    {'value': 8, 'name': 'Agosto'},
+    {'value': 9, 'name': 'Septiembre'},
+    {'value': 10, 'name': 'Octubre'},
+    {'value': 11, 'name': 'Noviembre'},
+    {'value': 12, 'name': 'Diciembre'},
+  ];
+
+  // Filtrar registros por año y mes
+  List<AttendanceRecordModel> _filterRecordsByDate(List<AttendanceRecordModel> records) {
+    return records.where((record) {
+      final matchesYear = record.date.year == selectedYear;
+      final matchesMonth = selectedMonth == null || record.date.month == selectedMonth;
+      return matchesYear && matchesMonth;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final locationProvider = context.watch<LocationProvider>();
@@ -116,37 +146,142 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final records = snapshot.data!;
+          final allRecords = snapshot.data!;
           final communes = locationProvider.communes;
           final locations = locationProvider.locations;
+
+          // Filtrar registros por año y mes
+          final filteredRecords = _filterRecordsByDate(allRecords);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Selector de Comuna
+                // Filtros
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Seleccionar Ruta (Comuna)', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: selectedCommuneId,
-                          hint: const Text('Selecciona una ruta'),
-                          items: communes.map((commune) => DropdownMenuItem(
-                            value: commune.id,
-                            child: Text(commune.name),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedCommuneId = value;
-                            });
-                          },
+                        const Text('Filtros:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        
+                        // Primera fila: Año y Mes
+                        Row(
+                          children: [
+                            // Selector de Año
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<int>(
+                                    value: selectedYear,
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    items: _availableYears.map((year) => DropdownMenuItem(
+                                      value: year,
+                                      child: Text(year.toString()),
+                                    )).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedYear = value!;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            
+                            // Selector de Mes
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  DropdownButtonFormField<int>(
+                                    value: selectedMonth,
+                                    hint: const Text('Todos los meses'),
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem<int>(
+                                        value: null,
+                                        child: Text('Todos los meses'),
+                                      ),
+                                      ..._months.map((month) => DropdownMenuItem<int>(
+                                        value: month['value'],
+                                        child: Text(month['name']),
+                                      )),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedMonth = value;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 16),
+                        
+                        // Segunda fila: Selector de Ruta
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Ruta (Comuna):', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: selectedCommuneId,
+                              hint: const Text('Selecciona una ruta'),
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              items: communes.map((commune) => DropdownMenuItem(
+                                value: commune.id,
+                                child: Text(commune.name),
+                              )).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedCommuneId = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        
+                        // Resumen de filtros aplicados
+                        if (selectedCommuneId != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Text(
+                              '📊 Mostrando promedios para ${selectedMonth != null ? _months.firstWhere((m) => m['value'] == selectedMonth)['name'] : 'todos los meses'} de $selectedYear - ${communes.firstWhere((c) => c.id == selectedCommuneId).name}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -158,7 +293,19 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: _buildAverageTable(records, locations, selectedCommuneId!),
+                      child: _buildAverageTable(filteredRecords, locations, selectedCommuneId!),
+                    ),
+                  ),
+                ] else ...[
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'Por favor selecciona una ruta para ver los promedios',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -175,6 +322,34 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
     
     if (communeLocations.isEmpty) {
       return const Center(child: Text('No hay sectores en esta ruta.'));
+    }
+
+    // Verificar si hay registros después del filtrado
+    if (records.isEmpty) {
+      return Center(
+        child: Column(
+          children: [
+            Icon(Icons.info_outline, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'No hay registros de asistencia',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Para ${selectedMonth != null ? _months.firstWhere((m) => m['value'] == selectedMonth)['name'] : 'el período seleccionado'} de $selectedYear en esta ruta.',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Puedes cambiar los filtros en la parte superior para ver más datos.',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
     }
 
     // Calcular datos para todos los sectores
@@ -212,10 +387,56 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
       }
     }
 
+    // Obtener información de la ruta seleccionada
+    final communeName = context.read<LocationProvider>().communes
+        .firstWhere((c) => c.id == communeId, orElse: () => 
+            Commune(id: '', name: 'Ruta Desconocida', cityId: '', locationIds: [], createdAt: DateTime.now(), updatedAt: DateTime.now())).name;
+    
+    // Calcular estadísticas de los registros
+    final totalRecords = records.length;
+    final uniqueDates = records.map((r) => '${r.date.year}-${r.date.month}-${r.date.day}').toSet().length;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Promedios por Día de la Semana', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        // Título con filtros aplicados
+        Text(
+          'Promedios por Día de la Semana',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${selectedMonth != null ? _months.firstWhere((m) => m['value'] == selectedMonth)['name'] : 'Todos los meses'} de $selectedYear - $communeName',
+          style: TextStyle(fontSize: 14, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$totalRecords registros',
+                style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$uniqueDates fechas únicas',
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,

@@ -4,6 +4,7 @@ import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/presentation/screens/admin/locations/locations_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin/user_management_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin/meetings/admin_events_tab.dart';
+import 'package:asistencias_app/presentation/screens/admin/admin_utilities_screen.dart';
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
 import 'package:asistencias_app/presentation/screens/about_screen.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
@@ -54,53 +55,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
   
-  // Método para generar datos de prueba (solo para ciro.720@gmail.com)
-  Future<void> _generateTestData(BuildContext context) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Dialog(
-          child: Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 20),
-                Text("Generando datos de prueba..."),
-              ],
-            ),
-          ),
-        );
-      },
-    );
 
-    try {
-      await _executeTestDataScript();
-      if (mounted) {
-        Navigator.pop(context); // Cerrar diálogo de carga
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Datos de prueba generados exitosamente para Quilicura'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Cerrar diálogo de carga
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error al generar datos: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
-  }
 
   // Método para limpiar datos inconsistentes de Firestore
   Future<void> _cleanupData(BuildContext context, String cleanupType) async {
@@ -778,110 +733,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   );
                 },
               ),
-            // Opción de datos de prueba (solo para ciro.720@gmail.com)
+            // Utilidades de administrador (solo para ciro.720@gmail.com)
             if (user.email == 'ciro.720@gmail.com')
               ListTile(
-                leading: const Icon(Icons.science, color: Colors.orange),
-                title: const Text('🧪 Generar Datos de Prueba'),
-                subtitle: const Text('Quilicura - Jun/Jul 2025'),
-                onTap: () async {
+                leading: const Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
+                title: const Text('⚙️ Utilidades de Administrador'),
+                subtitle: const Text('Generar datos, limpiar base de datos'),
+                onTap: () {
                   Navigator.pop(context);
-                  
-                  // Mostrar confirmación
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('🧪 Generar Datos de Prueba'),
-                      content: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Esto generará en la ruta QUILICURA:'),
-                          SizedBox(height: 8),
-                          Text('• 80 asistentes TEST (10 por sector)'),
-                          Text('• ~800 registros de asistencia jun-jul 2025'),
-                          Text('• Datos realistas para dashboards'),
-                          SizedBox(height: 16),
-                          Text('💰 Costo Firebase: < \$0.002 USD'),
-                          SizedBox(height: 8),
-                          Text('🔍 Verás el progreso paso a paso', 
-                               style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 4),
-                          Text('⚠️ Solo usar para demo con cliente', 
-                               style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancelar'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('🚀 Generar'),
-                        ),
-                      ],
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminUtilitiesScreen(),
                     ),
                   );
-                  
-                  if (confirm == true) {
-                    await _generateTestData(context);
-                  }
-                },
-              ),
-            // Opción de limpieza de datos (solo para administradores)
-            if (PermissionUtils.canManageUsers(user))
-              ListTile(
-                leading: const Icon(Icons.cleaning_services, color: Colors.red),
-                title: const Text('🧹 Limpiar Datos Inconsistentes'),
-                subtitle: const Text('Eliminar registros malformados'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  
-                  // Mostrar confirmación con opciones
-                  final option = await showDialog<String>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('🧹 Limpiar Datos Inconsistentes'),
-                      content: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Selecciona qué tipo de limpieza realizar:'),
-                          SizedBox(height: 12),
-                          Text('• Limpieza Completa: Elimina TODOS los registros de asistencia'),
-                          Text('• Limpieza de Prueba: Solo registros TEST y malformados'),
-                          Text('• Análisis: Revisar datos sin eliminar'),
-                          SizedBox(height: 16),
-                          Text('⚠️ Esta acción no se puede deshacer', 
-                               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, null),
-                          child: const Text('Cancelar'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, 'analyze'),
-                          child: const Text('📊 Analizar'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, 'test'),
-                          child: const Text('🧪 Solo TEST'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, 'full'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                          child: const Text('🗑️ Completa'),
-                        ),
-                      ],
-                    ),
-                  );
-                  
-                  if (option != null) {
-                    await _cleanupData(context, option);
-                  }
                 },
               ),
             ListTile(
@@ -1330,38 +1195,51 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                   'Asistencia Mensual por Tipo',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 250,
+                const SizedBox(height: 24), // Más espacio para el título
+                Container(
+                  height: 280, // Altura aumentada para acomodar tooltips
+                  padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
                   child: BarChart(
                     BarChartData(
                           alignment: BarChartAlignment.spaceEvenly,
-                          maxY: [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors].reduce((a, b) => a > b ? a : b).toDouble() + 25,
+                          // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                          maxY: () {
+                            final maxValue = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors]
+                                .reduce((a, b) => a > b ? a : b).toDouble();
+                            return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                          }(),
                           barTouchData: BarTouchData(
                             enabled: false, // Desactivado porque tooltips están siempre visibles
                             touchTooltipData: BarTouchTooltipData(
-                              tooltipBgColor: Colors.transparent, // Sin fondo
-                              tooltipRoundedRadius: 0,
-                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+                              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                              tooltipRoundedRadius: 4,
+                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              // Offset para posicionar tooltip justo encima de la barra
+                              tooltipMargin: 8,
                               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                 String value = '';
+                                Color color = Colors.black;
                                 switch (group.x) {
                                   case 0:
                                     value = '$totalMonthlyMembers';
+                                    color = Colors.blue;
                                     break;
                                   case 1:
                                     value = '$totalMonthlyListeners';
+                                    color = Colors.orange;
                                     break;
                                   case 2:
                                     value = '$totalMonthlyVisitors';
+                                    color = Colors.green;
                                     break;
                                 }
                                 return BarTooltipItem(
                                   value,
-                                  const TextStyle(
-                                    color: Colors.black,
+                                  TextStyle(
+                                    color: color,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                   ),
                                 );
                               },
@@ -1374,14 +1252,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
+                            reservedSize: 30, // Espacio reservado para etiquetas
                             getTitlesWidget: (value, meta) {
                               switch (value.toInt()) {
                                 case 0:
-                                  return const Text('Miembros');
+                                  return const Text('Miembros', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                                 case 1:
-                                  return const Text('Oyentes');
+                                  return const Text('Oyentes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                                 case 2:
-                                  return const Text('Visitas');
+                                  return const Text('Visitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
                               }
                               return const Text('');
                             },
@@ -1391,15 +1270,31 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: () {
+                          final maxValue = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors]
+                              .reduce((a, b) => a > b ? a : b).toDouble();
+                          return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+                        }(),
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: Colors.grey.shade300,
+                          strokeWidth: 0.5,
+                        ),
+                      ),
                       barGroups: [
                             BarChartGroupData(
                               x: 0, 
                               showingTooltipIndicators: [0], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: totalMonthlyMembers.toDouble(), 
-                                color: Colors.blue,
-                                width: 40,
-                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.blue.shade600,
+                                width: 35,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
+                                ),
                               )]
                             ),
                             BarChartGroupData(
@@ -1407,9 +1302,12 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                               showingTooltipIndicators: [0], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: totalMonthlyListeners.toDouble(), 
-                                color: Colors.orange,
-                                width: 40,
-                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.orange.shade600,
+                                width: 35,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
+                                ),
                               )]
                             ),
                             BarChartGroupData(
@@ -1417,9 +1315,12 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                               showingTooltipIndicators: [0], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: totalMonthlyVisitors.toDouble(), 
-                                color: Colors.green,
-                                width: 40,
-                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.green.shade600,
+                                width: 35,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
+                                ),
                               )]
                             ),
                       ],
@@ -1452,10 +1353,7 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                   },
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                  height: 250,
-                  child: _WeeklyRouteAttendanceChart(records: currentWeekRecordsFiltered),
-                ),
+                _WeeklyRouteAttendanceChart(records: currentWeekRecordsFiltered),
                 const SizedBox(height: 32),
                 _ComunaSectorAttendanceChart(
                   records: currentWeekRecordsFiltered,
@@ -1656,8 +1554,9 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
         ],
         // Gráfico de barras
         if (selectedCommuneId != null && sectorAttendance.isNotEmpty) ...[
-          SizedBox(
-            height: 260,
+          Container(
+            height: 290, // Altura aumentada para acomodar tooltips
+            padding: const EdgeInsets.only(top: 25, bottom: 15, left: 12, right: 12), // Padding interno
             child: Builder(
               builder: (context) {
                 final entries = sectorAttendance.entries.toList();
@@ -1666,15 +1565,18 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                 return BarChart(
               BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
+                // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
                 maxY: sectorAttendance.values.isNotEmpty 
-                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() + 20) 
+                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() * 1.15) 
                     : 10,
                     barTouchData: BarTouchData(
                       enabled: false, // Tooltips siempre visibles
                       touchTooltipData: BarTouchTooltipData(
-                        tooltipBgColor: Colors.transparent,
-                        tooltipRoundedRadius: 0,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+                        tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                        tooltipRoundedRadius: 4,
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        tooltipMargin: 8,
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           final index = group.x.toInt();
                           
@@ -1685,10 +1587,10 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                           final value = entries[index].value;
                           return BarTooltipItem(
                             '$value',
-                            const TextStyle(
-                              color: Colors.black,
+                            TextStyle(
+                              color: Colors.purple.shade700,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           );
                         },
@@ -1702,9 +1604,12 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                               showingTooltipIndicators: hasValidData ? [0] : [], // Siempre mostrar tooltip
                               barRods: [BarChartRodData(
                                 toY: entry.value.value.toDouble(), 
-                                color: Colors.purple[700],
-                                width: 40,
-                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.purple.shade600,
+                                width: 35,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
+                                ),
                               )],
                         ))
                     .toList(),
@@ -1819,30 +1724,36 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
         ? allCommuneEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b)
         : 0;
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceEvenly,
-        maxY: maxValue.toDouble() + 20,
-        barTouchData: BarTouchData(
-          enabled: false, // Tooltips siempre visibles
-          touchTooltipData: BarTouchTooltipData(
-            tooltipBgColor: Colors.transparent, // Sin fondo
-            tooltipRoundedRadius: 0,
-            tooltipPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final communeId = allCommuneEntries[group.x.toInt()].key;
-              final value = communeAttendance[communeId] ?? 0;
-              return BarTooltipItem(
-                '$value',
-                const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              );
-            },
+    return Container(
+      height: 280, // Altura controlada
+      padding: const EdgeInsets.only(top: 25, bottom: 15, left: 12, right: 12), // Padding interno
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceEvenly,
+          // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+          maxY: maxValue > 0 ? (maxValue.toDouble() * 1.15) : 10,
+          barTouchData: BarTouchData(
+            enabled: false, // Tooltips siempre visibles
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+              tooltipRoundedRadius: 4,
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipMargin: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final communeId = allCommuneEntries[group.x.toInt()].key;
+                final value = communeAttendance[communeId] ?? 0;
+                return BarTooltipItem(
+                  '$value',
+                  TextStyle(
+                    color: Colors.purple.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                );
+              },
+            ),
           ),
-        ),
         titlesData: FlTitlesData(
           leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -1887,14 +1798,18 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
             barRods: [
               BarChartRodData(
                 toY: communeData.value.toDouble(),
-                color: Colors.purple[700], // Barras púrpuras
+                color: Colors.purple.shade600, // Barras púrpuras
                 width: 30,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
               )
             ],
           );
         }).toList(),
       ),
+    ),
     );
   }
 } 

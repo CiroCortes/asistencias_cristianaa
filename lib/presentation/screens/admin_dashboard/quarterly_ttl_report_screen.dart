@@ -284,10 +284,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
             const SizedBox(height: 24),
             
             // Gráfico de Sumas
-            SizedBox(
-              height: 300,
-              child: _buildSumasChart(monthlyData, monthNames),
-            ),
+            const SizedBox(height: 8), // Más espacio para el título
+            _buildSumasChart(monthlyData, monthNames),
           ],
         ),
       ),
@@ -312,10 +310,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
             const SizedBox(height: 24),
             
             // Gráfico de Promedios
-            SizedBox(
-              height: 300,
-              child: _buildPromediosChart(monthlyData, monthNames),
-            ),
+            const SizedBox(height: 8), // Más espacio para el título
+            _buildPromediosChart(monthlyData, monthNames),
           ],
         ),
       ),
@@ -547,50 +543,121 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       barGroups.add(
         BarChartGroupData(
           x: i,
+          showingTooltipIndicators: [0, 1, 2], // Mostrar tooltips para todas las barras
           barRods: [
             BarChartRodData(
               toY: (data['sumaTtlReal'] ?? 0).toDouble(),
               color: Colors.blue.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
             BarChartRodData(
               toY: (data['sumaTtlSemana'] ?? 0).toDouble(),
               color: Colors.orange.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
             BarChartRodData(
               toY: (data['sumaVisitas'] ?? 0).toDouble(),
               color: Colors.green.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: _getMaxValue(monthlyData, monthNames, true),
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < monthNames.length) {
-                  return Text(monthNames[value.toInt()], style: const TextStyle(fontSize: 12));
+    return Container(
+      height: 320, // Altura aumentada para acomodar tooltips
+      padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _getMaxValue(monthlyData, monthNames, true),
+          barTouchData: BarTouchData(
+            enabled: false, // Tooltips siempre visibles
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+              tooltipRoundedRadius: 4,
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipMargin: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final monthName = monthNames[group.x.toInt()];
+                final data = monthlyData[monthName] ?? {};
+                String value = '';
+                Color color = Colors.black;
+                
+                switch (rodIndex) {
+                  case 0:
+                    value = '${data['sumaTtlReal'] ?? 0}';
+                    color = Colors.blue.shade700;
+                    break;
+                  case 1:
+                    value = '${data['sumaTtlSemana'] ?? 0}';
+                    color = Colors.orange.shade700;
+                    break;
+                  case 2:
+                    value = '${data['sumaVisitas'] ?? 0}';
+                    color = Colors.green.shade700;
+                    break;
                 }
-                return const Text('');
+                return BarTooltipItem(
+                  value,
+                  TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                );
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          barGroups: barGroups,
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30, // Espacio reservado para etiquetas
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < monthNames.length) {
+                    return Text(
+                      monthNames[value.toInt()], 
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: () {
+              final maxValue = _getMaxValue(monthlyData, monthNames, true);
+              return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+            }(),
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.shade300,
+              strokeWidth: 0.5,
+            ),
+          ),
         ),
-        borderData: FlBorderData(show: false),
-        gridData: const FlGridData(show: true),
       ),
     );
   }
@@ -605,50 +672,121 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       barGroups.add(
         BarChartGroupData(
           x: i,
+          showingTooltipIndicators: [0, 1, 2], // Mostrar tooltips para todas las barras
           barRods: [
             BarChartRodData(
               toY: (data['promedioTtlReal'] ?? 0).toDouble(),
               color: Colors.blue.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
             BarChartRodData(
               toY: (data['promedioTtlSemana'] ?? 0).toDouble(),
               color: Colors.orange.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
             BarChartRodData(
               toY: (data['promedioVisitas'] ?? 0).toDouble(),
               color: Colors.green.shade600,
-              width: 16,
+              width: 25, // Barras más anchas
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: _getMaxValue(monthlyData, monthNames, false),
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < monthNames.length) {
-                  return Text(monthNames[value.toInt()], style: const TextStyle(fontSize: 12));
+    return Container(
+      height: 320, // Altura aumentada para acomodar tooltips
+      padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _getMaxValue(monthlyData, monthNames, false),
+          barTouchData: BarTouchData(
+            enabled: false, // Tooltips siempre visibles
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
+              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+              tooltipRoundedRadius: 4,
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipMargin: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final monthName = monthNames[group.x.toInt()];
+                final data = monthlyData[monthName] ?? {};
+                String value = '';
+                Color color = Colors.black;
+                
+                switch (rodIndex) {
+                  case 0:
+                    value = '${data['promedioTtlReal'] ?? 0}';
+                    color = Colors.blue.shade700;
+                    break;
+                  case 1:
+                    value = '${data['promedioTtlSemana'] ?? 0}';
+                    color = Colors.orange.shade700;
+                    break;
+                  case 2:
+                    value = '${data['promedioVisitas'] ?? 0}';
+                    color = Colors.green.shade700;
+                    break;
                 }
-                return const Text('');
+                return BarTooltipItem(
+                  value,
+                  TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                );
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          barGroups: barGroups,
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30, // Espacio reservado para etiquetas
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < monthNames.length) {
+                    return Text(
+                      monthNames[value.toInt()], 
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: () {
+              final maxValue = _getMaxValue(monthlyData, monthNames, false);
+              return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+            }(),
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.shade300,
+              strokeWidth: 0.5,
+            ),
+          ),
         ),
-        borderData: FlBorderData(show: false),
-        gridData: const FlGridData(show: true),
       ),
     );
   }
