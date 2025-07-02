@@ -393,4 +393,197 @@ class AdminUtilitiesService {
       throw Exception('Error durante limpieza: $e');
     }
   }
+
+  // 🔍 NUEVA FUNCIÓN: Analizar discrepancias en asistencia semanal
+  Future<Map<String, dynamic>> analyzeWeeklyAttendanceDiscrepancies({
+    required Function(String) onProgress,
+    String? userEmail,
+    int? specificWeekNumber,
+  }) async {
+    _validateAccess(userEmail);
+    
+    try {
+      onProgress('🔍 Iniciando análisis de discrepancias de asistencia...');
+      
+      final now = DateTime.now();
+      final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
+      final currentYear = now.year;
+      
+      onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
+      
+      // Obtener TODOS los registros de la semana específica
+      final allRecordsQuery = await _firestore
+          .collection('attendanceRecords')
+          .where('weekNumber', isEqualTo: targetWeek)
+          .where('year', isEqualTo: currentYear)
+          .get();
+      
+      final allRecords = allRecordsQuery.docs;
+      onProgress('📊 Total registros encontrados: ${allRecords.length}');
+      
+      if (allRecords.isEmpty) {
+        return {
+          'error': 'No se encontraron registros para la semana $targetWeek',
+          'totalRecords': 0,
+          'correctDayRecords': 0,
+          'incorrectDayRecords': 0,
+          'discrepancy': 0,
+        };
+      }
+      
+      // Analizar registros por días
+      int totalAttendance = 0;
+      int correctDayAttendance = 0;
+      
+      final correctDayRecords = <Map<String, dynamic>>[];
+      final incorrectDayRecords = <Map<String, dynamic>>[];
+      final dayBreakdown = <String, int>{
+        'Monday': 0,
+        'Tuesday': 0,
+        'Wednesday': 0,
+        'Thursday': 0,
+        'Friday': 0,
+        'Saturday': 0,
+        'Sunday': 0,
+      };
+      final hourBreakdown = <int, int>{};
+      
+      for (final doc in allRecords) {
+        final data = doc.data();
+        final date = (data['date'] as Timestamp).toDate();
+                 final attendedCount = (data['attendedAttendeeIds'] as List).length;
+         final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+        final recordTotal = attendedCount + visitorCount;
+        
+        totalAttendance += recordTotal;
+        
+        // Información del registro
+        final recordInfo = {
+          'id': doc.id,
+          'date': date,
+          'weekday': date.weekday,
+          'weekdayName': _getWeekdayName(date.weekday),
+          'hour': date.hour,
+          'minute': date.minute,
+          'meetingType': data['meetingType'] ?? 'Sin tipo',
+          'attendees': attendedCount,
+          'visitors': visitorCount,
+          'total': recordTotal,
+          'sectorId': data['sectorId'] ?? 'Sin sector',
+        };
+        
+        // Contar por día de la semana
+        final dayName = _getWeekdayName(date.weekday);
+        dayBreakdown[dayName] = (dayBreakdown[dayName] ?? 0) + recordTotal;
+        
+        // Contar por hora
+        hourBreakdown[date.hour] = (hourBreakdown[date.hour] ?? 0) + recordTotal;
+        
+        // Verificar si es un día "correcto" (miércoles, sábado, domingo)
+        final isCorrectDay = date.weekday == DateTime.wednesday ||
+                            date.weekday == DateTime.saturday ||
+                            date.weekday == DateTime.sunday;
+        
+        if (isCorrectDay) {
+          correctDayAttendance += recordTotal;
+          correctDayRecords.add(recordInfo);
+        } else {
+          incorrectDayRecords.add(recordInfo);
+        }
+      }
+      
+      final discrepancy = totalAttendance - correctDayAttendance;
+      
+      // Logging detallado
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📊 RESUMEN DE ANÁLISIS:');
+      onProgress('   🔢 Total asistencia: $totalAttendance personas');
+      onProgress('   ✅ Días correctos: $correctDayAttendance personas');
+      onProgress('   ❌ Discrepancia: $discrepancy personas');
+      onProgress('   📋 Registros totales: ${allRecords.length}');
+      onProgress('   ✅ Registros días correctos: ${correctDayRecords.length}');
+      onProgress('   ❌ Registros días incorrectos: ${incorrectDayRecords.length}');
+      
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📅 ASISTENCIA POR DÍA DE LA SEMANA:');
+      for (final entry in dayBreakdown.entries) {
+        if (entry.value > 0) {
+          final emoji = entry.key == 'Wednesday' ? '✅' : 
+                       entry.key == 'Saturday' ? '✅' : 
+                       entry.key == 'Sunday' ? '✅' : '❌';
+          onProgress('   $emoji ${entry.key}: ${entry.value} personas');
+        }
+      }
+      
+      if (hourBreakdown.isNotEmpty) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('🕐 ASISTENCIA POR HORA:');
+        final sortedHours = hourBreakdown.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+        for (final entry in sortedHours) {
+          onProgress('   ${entry.key.toString().padLeft(2, '0')}:00 → ${entry.value} personas');
+        }
+      }
+      
+      if (incorrectDayRecords.isNotEmpty) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('❌ REGISTROS EN DÍAS INCORRECTOS:');
+        for (final record in incorrectDayRecords) {
+          final date = record['date'] as DateTime;
+          onProgress('   🗓️ ${date.day}/${date.month}/${date.year} ${record['weekdayName']} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
+          onProgress('      📍 Sector: ${record['sectorId']}');
+          onProgress('      👥 ${record['attendees']} asistentes + ${record['visitors']} visitas = ${record['total']} total');
+          onProgress('      📝 Tipo: ${record['meetingType']}');
+        }
+      }
+      
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('🎯 CONCLUSIÓN:');
+      if (discrepancy == 0) {
+        onProgress('   ✅ No hay discrepancias. Todos los registros están en días correctos.');
+      } else {
+        onProgress('   ⚠️ Se encontraron $discrepancy personas en días incorrectos.');
+        onProgress('   💡 Estos registros deberían estar en miércoles, sábado o domingo.');
+      }
+      
+      return {
+        'weekNumber': targetWeek,
+        'year': currentYear,
+        'totalRecords': allRecords.length,
+        'totalAttendance': totalAttendance,
+        'correctDayAttendance': correctDayAttendance,
+        'discrepancy': discrepancy,
+        'correctDayRecords': correctDayRecords.length,
+        'incorrectDayRecords': incorrectDayRecords.length,
+        'dayBreakdown': dayBreakdown,
+        'hourBreakdown': hourBreakdown,
+        'incorrectRecordsDetails': incorrectDayRecords,
+      };
+      
+    } catch (e) {
+      throw Exception('Error analizando discrepancias: $e');
+    }
+  }
+  
+  // Función auxiliar para obtener nombre del día de la semana
+  String _getWeekdayName(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Monday';
+      case DateTime.tuesday:
+        return 'Tuesday';
+      case DateTime.wednesday:
+        return 'Wednesday';
+      case DateTime.thursday:
+        return 'Thursday';
+      case DateTime.friday:
+        return 'Friday';
+      case DateTime.saturday:
+        return 'Saturday';
+      case DateTime.sunday:
+        return 'Sunday';
+      default:
+        return 'Unknown';
+    }
+  }
 } 

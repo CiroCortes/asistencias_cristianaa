@@ -16,7 +16,7 @@ import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
-import 'package:asistencias_app/presentation/screens/admin_dashboard/detailed_reports_screen.dart';
+import 'package:asistencias_app/presentation/screens/admin_dashboard/generate_reports_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/weekly_average_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/ttl_weekly_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/quarterly_ttl_report_screen.dart';
@@ -676,14 +676,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             if (PermissionUtils.canViewReports(user))
               ListTile(
-                leading: const Icon(Icons.description, color: Colors.grey),
-                title: const Text('Reportes Detallados (En mantenimiento)', style: TextStyle(color: Colors.grey)),
+                leading: const Icon(Icons.file_download, color: Colors.green),
+                title: const Text('Generar Reportes'),
+                subtitle: const Text('Exportar a Excel/CSV'),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Esta función está temporalmente deshabilitada. Próximamente nueva versión.'),
-                      duration: Duration(seconds: 3),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const GenerateReportsScreen(),
                     ),
                   );
                 },

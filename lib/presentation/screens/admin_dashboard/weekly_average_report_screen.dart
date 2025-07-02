@@ -242,23 +242,23 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
                           children: [
                             const Text('Ruta (Comuna):', style: TextStyle(fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4),
-                            DropdownButtonFormField<String>(
-                              value: selectedCommuneId,
-                              hint: const Text('Selecciona una ruta'),
+                        DropdownButtonFormField<String>(
+                          value: selectedCommuneId,
+                          hint: const Text('Selecciona una ruta'),
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
-                              items: communes.map((commune) => DropdownMenuItem(
-                                value: commune.id,
-                                child: Text(commune.name),
-                              )).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedCommuneId = value;
-                                });
-                              },
-                            ),
+                          items: communes.map((commune) => DropdownMenuItem(
+                            value: commune.id,
+                            child: Text(commune.name),
+                          )).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedCommuneId = value;
+                            });
+                          },
+                        ),
                           ],
                         ),
                         
@@ -395,7 +395,7 @@ class _WeeklyAverageReportScreenState extends State<WeeklyAverageReportScreen> {
     // Calcular estadísticas de los registros
     final totalRecords = records.length;
     final uniqueDates = records.map((r) => '${r.date.year}-${r.date.month}-${r.date.day}').toSet().length;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

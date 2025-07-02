@@ -168,6 +168,69 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
     }
   }
 
+  Future<void> _analyzeAttendanceDiscrepancies() async {
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.user;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text("Analizando discrepancias..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final results = await _utilitiesService.analyzeWeeklyAttendanceDiscrepancies(
+        onProgress: (message) => print('🔍 $message'),
+        userEmail: currentUser?.email,
+      );
+      
+      if (mounted) {
+        Navigator.pop(context);
+        
+        if (results.containsKey('error')) {
+          _showMessage(
+            '⚠️ ${results['error']}',
+            backgroundColor: Colors.orange,
+          );
+        } else {
+          final discrepancy = results['discrepancy'] ?? 0;
+          final weekNumber = results['weekNumber'] ?? 0;
+          
+          if (discrepancy == 0) {
+            _showMessage(
+              '✅ Semana $weekNumber: Sin discrepancias encontradas',
+              backgroundColor: Colors.green,
+            );
+          } else {
+            _showMessage(
+              '⚠️ Semana $weekNumber: ${discrepancy} personas en días incorrectos (Ver consola para detalles)',
+              backgroundColor: Colors.orange,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage('❌ Error: ${e.toString()}', backgroundColor: Colors.red);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
@@ -471,6 +534,79 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.orange.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bug_report, color: Colors.orange.shade700, size: 28),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Analizar Discrepancias de Asistencia',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Analiza por qué los KPIs del dashboard no coinciden. Identifica registros en días incorrectos.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('🔍 Analizar Discrepancias'),
+                            content: const Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Este análisis identificará:'),
+                                SizedBox(height: 8),
+                                Text('• Registros en días incorrectos (lunes-viernes)'),
+                                Text('• Diferencias entre KPIs del dashboard'),
+                                Text('• Distribución por día de la semana'),
+                                Text('• Detalles de registros problemáticos'),
+                                SizedBox(height: 16),
+                                Text('📊 Los resultados aparecen en la consola de debug', 
+                                     style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('🔍 Analizar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        
+                        if (confirm == true) {
+                          await _analyzeAttendanceDiscrepancies();
+                        }
+                      },
+                      icon: const Icon(Icons.bug_report),
+                      label: const Text('Analizar Discrepancias'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             Card(
               color: Colors.blue.shade50,
@@ -498,6 +634,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                       '• Analizar: Revisa los datos sin eliminar nada (seguro)\n'
                       '• Solo TEST: Elimina únicamente registros de prueba\n'
                       '• Completa: Elimina TODOS los registros de asistencia\n'
+                      '• Discrepancias: Encuentra registros en días incorrectos\n'
                       '• Los logs detallados aparecen en la consola de debug',
                       style: TextStyle(fontSize: 14),
                     ),

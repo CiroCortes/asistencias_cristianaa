@@ -581,9 +581,9 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       height: 320, // Altura aumentada para acomodar tooltips
       padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
       child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: _getMaxValue(monthlyData, monthNames, true),
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _getMaxValue(monthlyData, monthNames, true),
           barTouchData: BarTouchData(
             enabled: false, // Tooltips siempre visibles
             touchTooltipData: BarTouchTooltipData(
@@ -623,28 +623,28 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               },
             ),
           ),
-          barGroups: barGroups,
-          titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
+        barGroups: barGroups,
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
                 reservedSize: 30, // Espacio reservado para etiquetas
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() < monthNames.length) {
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() < monthNames.length) {
                     return Text(
                       monthNames[value.toInt()], 
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                     );
-                  }
-                  return const Text('');
-                },
-              ),
+                }
+                return const Text('');
+              },
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          borderData: FlBorderData(show: false),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(show: false),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
@@ -710,9 +710,9 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       height: 320, // Altura aumentada para acomodar tooltips
       padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
       child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: _getMaxValue(monthlyData, monthNames, false),
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: _getMaxValue(monthlyData, monthNames, false),
           barTouchData: BarTouchData(
             enabled: false, // Tooltips siempre visibles
             touchTooltipData: BarTouchTooltipData(
@@ -752,28 +752,28 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               },
             ),
           ),
-          barGroups: barGroups,
-          titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
+        barGroups: barGroups,
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
                 reservedSize: 30, // Espacio reservado para etiquetas
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() < monthNames.length) {
+              getTitlesWidget: (value, meta) {
+                if (value.toInt() < monthNames.length) {
                     return Text(
                       monthNames[value.toInt()], 
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                     );
-                  }
-                  return const Text('');
-                },
-              ),
+                }
+                return const Text('');
+              },
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          borderData: FlBorderData(show: false),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(show: false),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
