@@ -1205,8 +1205,11 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           alignment: BarChartAlignment.spaceEvenly,
                           // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
                           maxY: () {
-                            final maxValue = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors]
-                                .reduce((a, b) => a > b ? a : b).toDouble();
+                            final values = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors];
+                            if (values.isEmpty || values.every((v) => v == 0)) {
+                              return 10.0; // Valor por defecto si no hay datos
+                            }
+                            final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
                             return maxValue * 1.15; // 15% de margen, escalado dinámicamente
                           }(),
                           barTouchData: BarTouchData(
@@ -1566,10 +1569,15 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
                 return BarChart(
               BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
-                // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
-                maxY: sectorAttendance.values.isNotEmpty 
-                        ? (sectorAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() * 1.15) 
-                    : 10,
+                                // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                maxY: () {
+                  final values = sectorAttendance.values.toList();
+                  if (values.isEmpty || values.every((v) => v == 0)) {
+                    return 10.0; // Valor por defecto si no hay datos
+                  }
+                  final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
+                  return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                }(),
                     barTouchData: BarTouchData(
                       enabled: false, // Tooltips siempre visibles
                       touchTooltipData: BarTouchTooltipData(
@@ -1721,8 +1729,9 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
     }
 
     // Preparar datos para el gráfico
-    final maxValue = allCommuneEntries.map((e) => e.value).isNotEmpty 
-        ? allCommuneEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b)
+    final values = allCommuneEntries.map((e) => e.value).toList();
+    final maxValue = values.isNotEmpty && values.any((v) => v > 0)
+        ? values.reduce((a, b) => a > b ? a : b)
         : 0;
 
     return Container(

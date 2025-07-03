@@ -797,22 +797,28 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     for (final monthName in monthNames) {
       final data = monthlyData[monthName] ?? {};
       if (isSumas) {
-        maxValue = [
+        final values = [
           maxValue,
           (data['sumaTtlReal'] ?? 0).toDouble(),
           (data['sumaTtlSemana'] ?? 0).toDouble(),
           (data['sumaVisitas'] ?? 0).toDouble(),
-        ].reduce((a, b) => a > b ? a : b);
+        ];
+        if (values.any((v) => v > 0)) {
+          maxValue = values.reduce((a, b) => a > b ? a : b);
+        }
       } else {
-        maxValue = [
+        final values = [
           maxValue,
           (data['promedioTtlReal'] ?? 0).toDouble(),
           (data['promedioTtlSemana'] ?? 0).toDouble(),
           (data['promedioVisitas'] ?? 0).toDouble(),
-        ].reduce((a, b) => a > b ? a : b);
+        ];
+        if (values.any((v) => v > 0)) {
+          maxValue = values.reduce((a, b) => a > b ? a : b);
+        }
       }
     }
     
-    return maxValue * 1.2; // Añadir 20% de margen
+    return maxValue > 0 ? maxValue * 1.2 : 10.0; // Añadir 20% de margen o valor por defecto
   }
 } 

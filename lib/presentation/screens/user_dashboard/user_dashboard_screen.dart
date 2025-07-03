@@ -647,8 +647,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                 BarChartData(
                                   alignment: BarChartAlignment.spaceAround,
                                   // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
-                                  maxY: weekAttendance.values.isNotEmpty ? 
-                                      (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() * 1.15) : 10,
+                                  maxY: () {
+                                    final values = weekAttendance.values.toList();
+                                    if (values.isEmpty || values.every((v) => v == 0)) {
+                                      return 10.0; // Valor por defecto si no hay datos
+                                    }
+                                    final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
+                                    return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                                  }(),
                                   barTouchData: BarTouchData(
                                     enabled: false, // Desactivado porque tooltips están siempre visibles
                                     touchTooltipData: BarTouchTooltipData(
@@ -740,8 +746,11 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                     alignment: BarChartAlignment.spaceEvenly,
                     // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
                     maxY: () {
-                      final maxValue = [weeklyMembers, weeklyListeners, weeklyVisitors]
-                          .reduce((a, b) => a > b ? a : b).toDouble();
+                      final values = [weeklyMembers, weeklyListeners, weeklyVisitors];
+                      if (values.every((v) => v == 0)) {
+                        return 10.0; // Valor por defecto si no hay datos
+                      }
+                      final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
                       return maxValue * 1.15; // 15% de margen, escalado dinámicamente
                     }(),
                     barTouchData: BarTouchData(

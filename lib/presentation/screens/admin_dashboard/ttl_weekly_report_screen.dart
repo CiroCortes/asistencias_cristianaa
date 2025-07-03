@@ -189,7 +189,13 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
             : weeklyData;
 
           // Calcular máximos para colores
-          int maxTtlReal = filteredData.isEmpty ? 0 : filteredData.map((w) => w['ttlReal'] as int).reduce((a, b) => a > b ? a : b);
+          int maxTtlReal = 0;
+          if (filteredData.isNotEmpty) {
+            final values = filteredData.map((w) => w['ttlReal'] as int).toList();
+            if (values.any((v) => v > 0)) {
+              maxTtlReal = values.reduce((a, b) => a > b ? a : b);
+            }
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),

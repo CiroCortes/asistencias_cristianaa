@@ -415,6 +415,81 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       ),
       body: Column(
         children: [
+          // Header con título y contador dinámico
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16.0),
+            child: Consumer<AttendeeProvider>(
+              builder: (context, attendeeProvider, child) {
+                // Calcular asistentes filtrados usando la misma lógica existente
+                List<AttendeeModel> filteredAttendees = attendeeProvider.attendees
+                    .where((a) => a.isActive)
+                    .toList();
+
+                // Aplicar filtros para administradores (misma lógica que abajo)
+                if (userProvider.isAdmin) {
+                  if (_filterLocation != null) {
+                    filteredAttendees = filteredAttendees
+                        .where((a) => a.sectorId == _filterLocation!.id)
+                        .toList();
+                  } else if (_filterCommune != null) {
+                    final locationProvider = context.read<LocationProvider>();
+                    final sectorsInCommune = locationProvider.locations
+                        .where((location) => location.communeId == _filterCommune!.id)
+                        .map((location) => location.id)
+                        .toList();
+                    filteredAttendees = filteredAttendees
+                        .where((a) => sectorsInCommune.contains(a.sectorId))
+                        .toList();
+                  } else if (_filterCity != null) {
+                    final locationProvider = context.read<LocationProvider>();
+                    final communesInCity = locationProvider.communes
+                        .where((commune) => commune.cityId == _filterCity!.id)
+                        .map((commune) => commune.id)
+                        .toList();
+                    final sectorsInCity = locationProvider.locations
+                        .where((location) => communesInCity.contains(location.communeId))
+                        .map((location) => location.id)
+                        .toList();
+                    filteredAttendees = filteredAttendees
+                        .where((a) => sectorsInCity.contains(a.sectorId))
+                        .toList();
+                  }
+                } else {
+                  // Para usuarios no admin, filtrar por su sector
+                  final userSectorId = userProvider.user?.sectorId;
+                  if (userSectorId != null) {
+                    filteredAttendees = filteredAttendees
+                        .where((a) => a.sectorId == userSectorId)
+                        .toList();
+                  }
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Gestión de Asistentes',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${filteredAttendees.length} asistentes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
           // Filtros para administradores
           if (userProvider.isAdmin) 
             Container(

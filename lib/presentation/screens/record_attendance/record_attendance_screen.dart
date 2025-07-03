@@ -134,6 +134,101 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     }
   }
 
+  /// Valida que el día de la semana corresponda al tipo de reunión
+  /// Retorna true si es válido, false si hay discrepancia
+  bool _validateMeetingDayOfWeek() {
+    if (_selectedMeeting == null) return true;
+    
+    final eventDateTime = _combineSelectedDateWithEventTime();
+    final selectedWeekday = eventDateTime.weekday;
+    
+    // NUEVA LÓGICA: Usar daysOfWeek del modelo de reunión
+    final weekdayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    final selectedDayName = weekdayNames[selectedWeekday];
+    
+    // Verificar si el día seleccionado está en los días configurados de la reunión
+    final isValidDay = _selectedMeeting!.daysOfWeek.contains(selectedDayName);
+    
+    // Debug: Mostrar información de validación
+    print('🔍 Validación de día:');
+    print('   Reunión: ${_selectedMeeting!.name}');
+    print('   Días configurados: ${_selectedMeeting!.daysOfWeek}');
+    print('   Día seleccionado: $selectedDayName');
+    print('   Es válido: $isValidDay');
+    
+    return isValidDay;
+  }
+
+  /// Muestra un diálogo de advertencia cuando el día no coincide
+  void _showDayMismatchWarning() {
+    if (_selectedMeeting == null) return;
+    
+    final eventDateTime = _combineSelectedDateWithEventTime();
+    final selectedWeekday = eventDateTime.weekday;
+    final meetingName = _selectedMeeting!.name;
+    
+    // Obtener nombres de días
+    final weekdayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    final selectedDayName = weekdayNames[selectedWeekday];
+    
+    // NUEVA LÓGICA: Usar daysOfWeek para mostrar los días correctos
+    final expectedDays = _selectedMeeting!.daysOfWeek;
+    final expectedDaysText = expectedDays.join(', ');
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange.shade600),
+              const SizedBox(width: 8),
+              const Text('Día Incorrecto'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Has seleccionado "$meetingName" pero la fecha es $selectedDayName.',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Text(
+                  'Las reuniones "$meetingName" deben registrarse en: $expectedDaysText',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Por favor corrige la fecha para que coincida con uno de los días correctos.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   bool _canSubmit(UserProvider userProvider) {
     final currentUser = userProvider.user;
     
@@ -208,28 +303,7 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     );
   }
 
-  void _recordAttendance() async {
-    // Validaciones mejoradas con mensajes específicos
-    if (_selectedMeeting == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Por favor selecciona un evento antes de continuar.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-    
-    if (_selectedAttendeeIds.isEmpty && _visitorCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Debes seleccionar al menos un asistente o agregar una visita.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
+  Future<void> _recordAttendance() async {
     final userProvider = context.read<UserProvider>();
     final currentUser = userProvider.user;
 
@@ -243,7 +317,6 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       return;
     }
 
-    // Si no es admin, verificar que tenga sector asignado
     if (!userProvider.isAdmin && currentUser.sectorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -252,6 +325,12 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
         ),
       );
       return;
+    }
+
+    // NUEVA VALIDACIÓN: Verificar que el día de la semana sea correcto
+    if (!_validateMeetingDayOfWeek()) {
+      _showDayMismatchWarning();
+      return; // No proceder con el guardado
     }
 
     try {

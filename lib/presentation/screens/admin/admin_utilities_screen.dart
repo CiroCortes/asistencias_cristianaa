@@ -231,6 +231,77 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
     }
   }
 
+  Future<void> _cleanupIncorrectDayRecords({bool dryRun = true}) async {
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.user;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Text(dryRun ? "Simulando limpieza..." : "Limpiando registros..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final results = await _utilitiesService.cleanupIncorrectDayRecords(
+        onProgress: (message) => print('🧹 $message'),
+        userEmail: currentUser?.email,
+        dryRun: dryRun,
+      );
+      
+      if (mounted) {
+        Navigator.pop(context);
+        
+        if (results.containsKey('error')) {
+          _showMessage(
+            '⚠️ ${results['error']}',
+            backgroundColor: Colors.orange,
+          );
+        } else {
+          final incorrectRecords = results['incorrectDayRecords'] ?? 0;
+          final deletedRecords = results['deletedRecords'] ?? 0;
+          final deletedAttendance = results['deletedAttendance'] ?? 0;
+          final weekNumber = results['weekNumber'] ?? 0;
+          
+          if (incorrectRecords == 0) {
+            _showMessage(
+              '✅ Semana $weekNumber: No hay registros en días incorrectos',
+              backgroundColor: Colors.green,
+            );
+          } else if (dryRun) {
+            _showMessage(
+              '🔍 Simulación: $incorrectRecords registros ($deletedAttendance personas) serían eliminados',
+              backgroundColor: Colors.blue,
+            );
+          } else {
+            _showMessage(
+              '✅ Limpieza completada: $deletedRecords registros ($deletedAttendance personas) eliminados',
+              backgroundColor: Colors.green,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage('❌ Error: ${e.toString()}', backgroundColor: Colors.red);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
@@ -296,7 +367,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -607,6 +678,132 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.purple.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.cleaning_services, color: Colors.purple.shade700, size: 28),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Limpiar Registros en Días Incorrectos',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Elimina registros de asistencia que están en días incorrectos (lunes, martes, jueves, viernes). Solo mantiene miércoles, sábados y domingos.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('🔍 Simular Limpieza'),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Esta simulación mostrará:'),
+                                      SizedBox(height: 8),
+                                      Text('• Registros que serían eliminados'),
+                                      Text('• Total de personas afectadas'),
+                                      Text('• Detalles de cada registro'),
+                                      SizedBox(height: 16),
+                                      Text('🛡️ NO se eliminará nada, solo simulación', 
+                                           style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('🔍 Simular'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirm == true) {
+                                await _cleanupIncorrectDayRecords(dryRun: true);
+                              }
+                            },
+                            icon: const Icon(Icons.visibility),
+                            label: const Text('Simular'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('⚠️ Limpiar Registros Incorrectos'),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Esta acción eliminará:'),
+                                      SizedBox(height: 8),
+                                      Text('• Registros en lunes, martes, jueves, viernes'),
+                                      Text('• Solo mantendrá miércoles, sábados, domingos'),
+                                      Text('• Los registros eliminados NO se pueden recuperar'),
+                                      SizedBox(height: 16),
+                                      Text('⚠️ Esta acción es irreversible', 
+                                           style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      child: const Text('🧹 Limpiar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirm == true) {
+                                await _cleanupIncorrectDayRecords(dryRun: false);
+                              }
+                            },
+                            icon: const Icon(Icons.cleaning_services),
+                            label: const Text('Limpiar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             Card(
               color: Colors.blue.shade50,
@@ -635,6 +832,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                       '• Solo TEST: Elimina únicamente registros de prueba\n'
                       '• Completa: Elimina TODOS los registros de asistencia\n'
                       '• Discrepancias: Encuentra registros en días incorrectos\n'
+                      '• Limpiar Días Incorrectos: Elimina registros en lunes-viernes\n'
                       '• Los logs detallados aparecen en la consola de debug',
                       style: TextStyle(fontSize: 14),
                     ),

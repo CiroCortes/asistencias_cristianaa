@@ -586,4 +586,160 @@ class AdminUtilitiesService {
         return 'Unknown';
     }
   }
+
+  // 🧹 NUEVA FUNCIÓN: Limpiar registros en días incorrectos
+  Future<Map<String, dynamic>> cleanupIncorrectDayRecords({
+    required Function(String) onProgress,
+    String? userEmail,
+    int? specificWeekNumber,
+    bool dryRun = true, // Por defecto solo simula, no elimina
+  }) async {
+    _validateAccess(userEmail);
+    
+    try {
+      onProgress('🧹 Iniciando limpieza de registros en días incorrectos...');
+      onProgress('${dryRun ? '🔍 MODO SIMULACIÓN' : '⚠️ MODO ELIMINACIÓN REAL'}');
+      
+      final now = DateTime.now();
+      final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
+      final currentYear = now.year;
+      
+      onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
+      
+      // Obtener TODOS los registros de la semana específica
+      final allRecordsQuery = await _firestore
+          .collection('attendanceRecords')
+          .where('weekNumber', isEqualTo: targetWeek)
+          .where('year', isEqualTo: currentYear)
+          .get();
+      
+      final allRecords = allRecordsQuery.docs;
+      onProgress('📊 Total registros encontrados: ${allRecords.length}');
+      
+      if (allRecords.isEmpty) {
+        return {
+          'error': 'No se encontraron registros para la semana $targetWeek',
+          'totalRecords': 0,
+          'incorrectDayRecords': 0,
+          'deletedRecords': 0,
+          'deletedAttendance': 0,
+        };
+      }
+      
+      // Identificar registros en días incorrectos
+      final incorrectDayRecords = <DocumentSnapshot>[];
+      int totalIncorrectAttendance = 0;
+      
+      for (final doc in allRecords) {
+        final data = doc.data();
+        final date = (data['date'] as Timestamp).toDate();
+        final attendedCount = (data['attendedAttendeeIds'] as List).length;
+        final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+        final recordTotal = attendedCount + visitorCount;
+        
+        // Verificar si es un día "incorrecto" (lunes, martes, jueves, viernes)
+        final isIncorrectDay = date.weekday == DateTime.monday ||
+                               date.weekday == DateTime.tuesday ||
+                               date.weekday == DateTime.thursday ||
+                               date.weekday == DateTime.friday;
+        
+        if (isIncorrectDay) {
+          incorrectDayRecords.add(doc);
+          totalIncorrectAttendance += recordTotal;
+        }
+      }
+      
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('❌ REGISTROS EN DÍAS INCORRECTOS ENCONTRADOS:');
+      onProgress('   📋 Total registros: ${incorrectDayRecords.length}');
+      onProgress('   👥 Total asistencia: $totalIncorrectAttendance personas');
+      
+      if (incorrectDayRecords.isNotEmpty) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('📝 DETALLES DE REGISTROS A ELIMINAR:');
+        
+                 for (final doc in incorrectDayRecords) {
+           final data = doc.data() as Map<String, dynamic>?;
+           if (data == null) continue;
+           
+           final date = (data['date'] as Timestamp).toDate();
+           final attendedCount = (data['attendedAttendeeIds'] as List).length;
+           final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+           final recordTotal = attendedCount + visitorCount;
+           final meetingType = data['meetingType'] ?? 'Sin tipo';
+           final sectorId = data['sectorId'] ?? 'Sin sector';
+          
+          onProgress('   🗓️ ${date.day}/${date.month}/${date.year} ${_getWeekdayName(date.weekday)} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
+          onProgress('      📍 Sector: $sectorId');
+          onProgress('      👥 $attendedCount asistentes + $visitorCount visitas = $recordTotal total');
+          onProgress('      📝 Tipo: $meetingType');
+          onProgress('      🆔 ID: ${doc.id}');
+        }
+        
+        if (!dryRun) {
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('⚠️ ELIMINANDO REGISTROS...');
+          
+          int deletedCount = 0;
+          for (final doc in incorrectDayRecords) {
+            try {
+              await doc.reference.delete();
+              deletedCount++;
+              onProgress('   ✅ Eliminado: ${doc.id}');
+            } catch (e) {
+              onProgress('   ❌ Error eliminando ${doc.id}: $e');
+            }
+          }
+          
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('🎉 LIMPIEZA COMPLETADA:');
+          onProgress('   ✅ Registros eliminados: $deletedCount');
+          onProgress('   👥 Asistencia eliminada: $totalIncorrectAttendance personas');
+          
+          return {
+            'weekNumber': targetWeek,
+            'year': currentYear,
+            'totalRecords': allRecords.length,
+            'incorrectDayRecords': incorrectDayRecords.length,
+            'deletedRecords': deletedCount,
+            'deletedAttendance': totalIncorrectAttendance,
+            'dryRun': false,
+          };
+        } else {
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('🔍 SIMULACIÓN COMPLETADA:');
+          onProgress('   📋 Registros que se eliminarían: ${incorrectDayRecords.length}');
+          onProgress('   👥 Asistencia que se eliminaría: $totalIncorrectAttendance personas');
+          onProgress('   💡 Ejecuta sin dryRun=true para eliminar realmente');
+          
+          return {
+            'weekNumber': targetWeek,
+            'year': currentYear,
+            'totalRecords': allRecords.length,
+            'incorrectDayRecords': incorrectDayRecords.length,
+            'deletedRecords': 0,
+            'deletedAttendance': totalIncorrectAttendance,
+            'dryRun': true,
+          };
+        }
+      } else {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('✅ No se encontraron registros en días incorrectos');
+        onProgress('   Todos los registros están en días válidos (miércoles, sábado, domingo)');
+        
+        return {
+          'weekNumber': targetWeek,
+          'year': currentYear,
+          'totalRecords': allRecords.length,
+          'incorrectDayRecords': 0,
+          'deletedRecords': 0,
+          'deletedAttendance': 0,
+          'dryRun': dryRun,
+        };
+      }
+      
+    } catch (e) {
+      throw Exception('Error durante limpieza de registros incorrectos: $e');
+    }
+  }
 } 
