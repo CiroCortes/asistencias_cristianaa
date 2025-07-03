@@ -301,39 +301,6 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Formato
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.file_copy, color: Colors.blue.shade600),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Formato de Exportación',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(child: _buildFormatOption('excel', 'Excel (.xlsx)', Icons.table_chart, Colors.green)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildFormatOption('csv', 'CSV (.csv)', Icons.description, Colors.blue)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
 
               // Botón Generar

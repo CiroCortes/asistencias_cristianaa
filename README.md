@@ -122,3 +122,24 @@ flutter run
 
 ## 7. Licencia
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE.md](LICENSE.md) para más detalles.
+
+## Estado de la funcionalidad de reportes CSV
+
+**Pendiente:** Exportación de reportes a CSV con descarga automática
+
+- El objetivo es permitir que el usuario seleccione un rango de fechas y exporte los datos filtrados a un archivo CSV descargable desde la app.
+- Actualmente, la lógica de generación y descarga de archivos CSV **no está implementada**.
+- Se requiere:
+  - Filtrar los datos según los criterios seleccionados (rango de fechas, ciudad, comuna, etc.)
+  - Convertir los datos a formato CSV usando la librería `csv` de Dart
+  - Descargar el archivo automáticamente en Web/Desktop/Mobile
+- El botón de exportar ya está presente en la UI, pero la funcionalidad de descarga está pendiente.
+
+**Próximos pasos:**
+- Implementar la generación de CSV y la descarga multiplataforma
+- Personalizar el nombre del archivo y las cabeceras
+- Proveer feedback visual al usuario tras la descarga
+
+---
+
+*Actualizado automáticamente por el asistente el [fecha de hoy]*
