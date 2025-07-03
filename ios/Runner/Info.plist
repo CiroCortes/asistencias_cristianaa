@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Esta app necesita acceso a la carpeta de documentos para guardar reportes.</string>
 </dict>
 </plist>

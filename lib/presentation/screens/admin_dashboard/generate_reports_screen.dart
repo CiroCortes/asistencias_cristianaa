@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
+import 'package:asistencias_app/core/services/report_export_service.dart';
 import 'package:intl/intl.dart';
 
 class GenerateReportsScreen extends StatefulWidget {
@@ -16,9 +17,9 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
   String? selectedCityId;
   String? selectedCommuneId;
   DateTimeRange? selectedDateRange;
-  String selectedFormat = 'excel';
   bool _isLoading = true;
   bool _isGenerating = false;
+  final ReportExportService _reportService = ReportExportService();
 
   @override
   void initState() {
@@ -108,7 +109,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Exportar Reportes',
+                        'Exportar Reportes CSV',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -116,7 +117,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                         ),
                       ),
                       const Text(
-                        'Genera reportes personalizados en Excel o CSV',
+                        'Genera reportes en bruto en formato CSV',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
@@ -158,6 +159,8 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+
 
               // Filtros
               Card(
@@ -336,7 +339,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                           const Icon(Icons.download, color: Colors.white, size: 24),
                         const SizedBox(width: 12),
                         Text(
-                          _isGenerating ? 'Generando...' : 'Generar y Descargar',
+                          _isGenerating ? 'Generando...' : 'Generar CSV',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -375,8 +378,8 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                       const Text(
                         '• Los reportes se generan en tiempo real\n'
                         '• Los archivos se descargan automáticamente\n'
-                        '• Excel incluye gráficos y formato avanzado\n'
-                        '• CSV es compatible con todas las aplicaciones',
+                        '• Formato CSV compatible con todas las aplicaciones\n'
+                        '• Datos en bruto para análisis posterior',
                         style: TextStyle(fontSize: 14),
                       ),
                     ],
@@ -426,49 +429,43 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
     );
   }
 
-  Widget _buildFormatOption(String value, String title, IconData icon, Color color) {
-    final isSelected = selectedFormat == value;
-    return InkWell(
-      onTap: () => setState(() => selectedFormat = value),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: isSelected ? color : Colors.grey.shade300, width: isSelected ? 2 : 1),
-          borderRadius: BorderRadius.circular(8),
-          color: isSelected ? color.withOpacity(0.1) : null,
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? color : Colors.grey.shade600, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? color : Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Future<void> _generateReport() async {
     setState(() => _isGenerating = true);
     
     try {
-      await Future.delayed(const Duration(seconds: 3));
+      // Validar que se haya seleccionado un rango de fechas
+      if (selectedDateRange == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor selecciona un rango de fechas'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Generar y exportar el reporte
+      final filePath = await _reportService.generateAndExportReport(
+        reportType: selectedReportType,
+        cityId: selectedCityId,
+        communeId: selectedCommuneId,
+        dateRange: selectedDateRange!,
+      );
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Reporte generado exitosamente en formato ${selectedFormat.toUpperCase()}'),
+            content: Text('Reporte generado exitosamente: $filePath'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Ver',
+              onPressed: () {
+                // Aquí podrías abrir el archivo o mostrar más información
+              },
+            ),
           ),
         );
       }
@@ -478,6 +475,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
           SnackBar(
             content: Text('Error al generar reporte: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
