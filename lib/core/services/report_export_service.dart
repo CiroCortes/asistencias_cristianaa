@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart' as pp;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,11 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
+import 'package:excel/excel.dart';
 
 class ReportExportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Genera y exporta un reporte según los filtros especificados
+  /// Genera y exporta un reporte en formato Excel (.xlsx) según los filtros especificados
   Future<String> generateAndExportReport({
     required String reportType,
     String? cityId,
@@ -29,8 +29,8 @@ class ReportExportService {
         dateRange: dateRange,
       );
 
-      // Generar archivo CSV
-      final filePath = await _generateCSVReport(data, reportType);
+      // Generar archivo Excel
+      final filePath = await _generateExcelReport(data, reportType);
 
       // Solicitar permisos y guardar archivo
       await _requestPermissions();
@@ -137,27 +137,38 @@ class ReportExportService {
     return allLocations;
   }
 
-  /// Genera reporte en formato CSV
-  Future<String> _generateCSVReport(Map<String, dynamic> data, String reportType) async {
-    // Obtener encabezados
+  /// Genera reporte en formato Excel (.xlsx)
+  Future<String> _generateExcelReport(Map<String, dynamic> data, String reportType) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Reporte'];
+
+    // Configurar encabezados según el tipo de reporte
     List<List<String>> headers = _getHeadersForReportType(reportType);
     
-    // Generar datos
+    // Escribir encabezados
+    for (int i = 0; i < headers[0].length; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          ..value = headers[0][i];
+    }
+
+    // Generar datos según el tipo de reporte
     List<List<String>> rows = await _generateDataRows(data, reportType);
     
-    // Combinar encabezados y datos
-    List<List<String>> allData = [...headers, ...rows];
-    
-    // Convertir a CSV
-    String csv = const ListToCsvConverter().convert(allData);
-    
+    // Escribir datos
+    for (int i = 0; i < rows.length; i++) {
+      for (int j = 0; j < rows[i].length; j++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1))
+            ..value = rows[i][j];
+      }
+    }
+
     // Guardar archivo temporal
     final tempDir = await pp.getTemporaryDirectory();
-    final fileName = 'reporte_${reportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+    final fileName = 'reporte_${reportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
     final filePath = '${tempDir.path}/$fileName';
     
     final file = File(filePath);
-    await file.writeAsString(csv);
+    await file.writeAsBytes(excel.encode()!);
     
     return filePath;
   }
@@ -166,17 +177,22 @@ class ReportExportService {
   List<List<String>> _getHeadersForReportType(String reportType) {
     switch (reportType) {
       case 'asistencia_general':
-        return [['Fecha', 'Sector', 'Tipo de Reunión', 'Asistentes', 'Visitas', 'Total']];
-      
+        // Reporte detallado por asistente
+        return [[
+          'Fecha',
+          'Sector',
+          'Tipo de Reunión',
+          'Nombre',
+          'Apellido',
+          'Tipo de Miembro',
+          'Contacto',
+        ]];
       case 'asistencia_sectores':
         return [['Sector', 'Ciudad', 'Comuna', 'Total Asistentes', 'Promedio Semanal', 'Última Reunión']];
-      
       case 'ttl_semanal':
         return [['Semana', 'Año', 'Total Asistentes', 'Promedio Diario', 'Sectores Activos']];
-      
       case 'visitas':
         return [['Fecha', 'Sector', 'Nombre Visitante', 'Tipo', 'Contacto']];
-      
       default:
         return [['Datos']];
     }
@@ -190,45 +206,57 @@ class ReportExportService {
 
     switch (reportType) {
       case 'asistencia_general':
-        return _generateGeneralAttendanceRows(attendanceRecords, attendees, locations);
-      
+        return _generateDetailedAttendanceRows(attendanceRecords, attendees, locations);
       case 'asistencia_sectores':
         return _generateSectorAttendanceRows(attendanceRecords, attendees, locations);
-      
       case 'ttl_semanal':
         return _generateWeeklyTTLRows(attendanceRecords);
-      
       case 'visitas':
         return _generateVisitorsRows(attendanceRecords, attendees, locations);
-      
       default:
         return [['No hay datos disponibles']];
     }
   }
 
-  /// Genera filas para reporte de asistencia general
-  List<List<String>> _generateGeneralAttendanceRows(
+  /// Genera filas detalladas para reporte de asistencia general
+  List<List<String>> _generateDetailedAttendanceRows(
     List<AttendanceRecordModel> records,
     List<AttendeeModel> attendees,
     Map<String, Location> locations,
   ) {
     List<List<String>> rows = [];
-    
+    final attendeeMap = {for (var a in attendees) a.id: a};
+
     for (var record in records) {
       final location = locations[record.sectorId];
-      final attendeeCount = record.attendedAttendeeIds.length;
-      final total = attendeeCount + record.visitorCount;
-      
-      rows.add([
-        DateFormat('dd/MM/yyyy').format(record.date),
-        location?.name ?? 'Sector no encontrado',
-        record.meetingType,
-        attendeeCount.toString(),
-        record.visitorCount.toString(),
-        total.toString(),
-      ]);
+      // Para cada asistente registrado
+      for (var attendeeId in record.attendedAttendeeIds) {
+        final attendee = attendeeMap[attendeeId];
+        rows.add([
+          DateFormat('dd/MM/yyyy').format(record.date),
+          location?.name ?? 'Sector no encontrado',
+          record.meetingType,
+          attendee?.name ?? '',
+          attendee?.lastName ?? '',
+          attendee?.type ?? '',
+          attendee?.contactInfo ?? '',
+        ]);
+      }
+      // Para las visitas (si solo hay número, no nombre)
+      if (record.visitorCount > 0) {
+        for (int i = 1; i <= record.visitorCount; i++) {
+          rows.add([
+            DateFormat('dd/MM/yyyy').format(record.date),
+            location?.name ?? 'Sector no encontrado',
+            record.meetingType,
+            'Visita $i',
+            '',
+            'visitante',
+            '',
+          ]);
+        }
+      }
     }
-    
     return rows;
   }
 
@@ -346,7 +374,7 @@ class ReportExportService {
   /// Guarda el archivo en la carpeta pública de descargas (Downloads) en Android
   Future<String> _saveFile(String tempPath, String reportType) async {
     String filePath;
-    final fileName = 'reporte_${reportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+    final fileName = 'reporte_${reportType}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
 
     if (Platform.isAndroid) {
       // Carpeta pública de descargas (Downloads)

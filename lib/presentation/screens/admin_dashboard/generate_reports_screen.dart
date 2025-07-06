@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
-import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:asistencias_app/core/services/report_export_service.dart';
 import 'package:intl/intl.dart';
 
@@ -109,7 +108,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Exportar Reportes CSV',
+                        'Exportar Reportes Excel',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -117,7 +116,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                         ),
                       ),
                       const Text(
-                        'Genera reportes en bruto en formato CSV',
+                        'Genera reportes detallados en formato Excel (.xlsx)',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
@@ -339,7 +338,7 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                           const Icon(Icons.download, color: Colors.white, size: 24),
                         const SizedBox(width: 12),
                         Text(
-                          _isGenerating ? 'Generando...' : 'Generar CSV',
+                          _isGenerating ? 'Generando...' : 'Generar Excel',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -378,8 +377,8 @@ class _GenerateReportsScreenState extends State<GenerateReportsScreen> {
                       const Text(
                         '• Los reportes se generan en tiempo real\n'
                         '• Los archivos se descargan automáticamente\n'
-                        '• Formato CSV compatible con todas las aplicaciones\n'
-                        '• Datos en bruto para análisis posterior',
+                        '• Formato Excel (.xlsx) compatible con todas las aplicaciones\n'
+                        '• Incluye todos los datos de asistentes y visitas',
                         style: TextStyle(fontSize: 14),
                       ),
                     ],

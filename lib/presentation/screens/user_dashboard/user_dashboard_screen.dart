@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
+import 'package:asistencias_app/core/widgets/app_logo.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.dart';
 import 'package:asistencias_app/presentation/screens/profile_screen.dart';
@@ -13,6 +14,7 @@ import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
 import 'package:asistencias_app/core/utils/date_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 
 class UserDashboardScreen extends StatefulWidget {
   const UserDashboardScreen({super.key});
@@ -83,8 +85,6 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
               TextButton(
                 onPressed: () {
                    Navigator.of(context).pop(true);
-                  // Cierra la app
-                  // SystemNavigator.pop();
                 },
                 child: const Text('Salir'),
               ),
@@ -92,14 +92,21 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           ),
         ).then((exit) {
           if (exit ?? false) {
-             // Cierra la app
-             // SystemNavigator.pop();
+             // Minimiza la app usando el método nativo de Flutter
+             SystemNavigator.pop();
           }
         });
       },
       child: Scaffold(
       appBar: AppBar(
-        title: const Text('Panel de Usuario'),
+        title: Row(
+          children: [
+            const AppLogo(width: 30, height: 30),
+            const SizedBox(width: 10),
+            const Text('IBBN Asistencia'),
+          ],
+        ),
+        centerTitle: true,
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(

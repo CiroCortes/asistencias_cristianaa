@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/services/auth_service.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/core/widgets/app_logo.dart';
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -98,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Iniciar Sesión'),
+        title: const Text('IBBN Asistencia'),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -107,6 +109,25 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Logo de la aplicación
+              const SizedBox(height: 20.0),
+              const Center(
+                child: AppLogo(
+                  width: 120,
+                  height: 120,
+                ),
+              ),
+              const SizedBox(height: 20.0),
+              const Text(
+                'IBBN Asistencia',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 30.0),
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(8.0),

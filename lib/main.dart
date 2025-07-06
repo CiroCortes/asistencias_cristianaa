@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:asistencias_app/presentation/screens/splash_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
 import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
@@ -58,7 +59,7 @@ class AsistenciasApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'App de Asistencias',
+        title: 'IBBN Asistencia',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
@@ -75,7 +76,8 @@ class AsistenciasApp extends StatelessWidget {
         locale: const Locale('es', ''), // Fuerza el locale a español
         initialRoute: '/',
         routes: {
-          '/': (context) => const AuthWrapper(),
+          '/': (context) => const SplashScreen(),
+          '/auth': (context) => const AuthWrapper(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/pending_approval': (context) => const PendingApprovalScreen(),

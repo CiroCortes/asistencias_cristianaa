@@ -1,0 +1,35 @@
+[33mcommit ed4047805a18facd653dbe1027dbd098ba93bee1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Thu Jul 3 13:51:46 2025 -0400
+
+    creacion de reportes excel
+
+[33mcommit b16607f44aece0a68ff8bc8397f6178fdb7db901[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Thu Jul 3 11:35:07 2025 -0400
+
+    preparacion para la creacion de reportes csv
+
+[33mcommit cff3db9ce7cd7fde0d1b2c1b0fdf7b35e0811cfd[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Wed Jul 2 21:50:59 2025 -0400
+
+    aseguramos asistencias en 0 y limpieza de datos, preparamos para sistema de reportes
+
+[33mcommit d9912a5979de5ed17f5a65918b16c84bf9c6dc7c[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Wed Jul 2 19:59:15 2025 -0400
+
+    se arreglan problemas de UI e informes de reporteria excel
+
+[33mcommit b30921bff14627246c86639fef31290d81f7340c[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Mon Jun 30 16:25:50 2025 -0400
+
+    cambios de ui para testing
+
+[33mcommit 09ceb4110d8636b8d00bcc5daba30c3fc965211c[m
+Author: horoscope <ciro.720@gmail.com>
+Date:   Mon Jun 30 14:42:21 2025 -0400
+
+    nuevas correciones de UI

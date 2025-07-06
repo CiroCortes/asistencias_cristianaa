@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/services/auth_service.dart';
+import 'package:asistencias_app/core/widgets/app_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -92,7 +93,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registro'),
+        title: const Text('IBBN Asistencia'),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -101,6 +103,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Logo de la aplicación
+              const SizedBox(height: 20.0),
+              const Center(
+                child: AppLogo(
+                  width: 100,
+                  height: 100,
+                ),
+              ),
+              const SizedBox(height: 20.0),
+              const Text(
+                'Registro de Usuario',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 30.0),
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(8.0),

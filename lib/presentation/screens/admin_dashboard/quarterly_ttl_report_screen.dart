@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';

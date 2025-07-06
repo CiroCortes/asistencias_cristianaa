@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asistencias_app/core/utils/permission_utils.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/core/widgets/app_logo.dart';
 import 'package:asistencias_app/presentation/screens/admin/locations/locations_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin/user_management_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin/meetings/admin_events_tab.dart';
@@ -11,7 +12,6 @@ import 'package:asistencias_app/presentation/screens/attendees/attendees_screen.
 import 'package:asistencias_app/presentation/screens/record_attendance/record_attendance_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/core/providers/attendee_provider.dart';
 import 'package:asistencias_app/data/models/attendee_model.dart';
@@ -20,11 +20,9 @@ import 'package:asistencias_app/presentation/screens/admin_dashboard/generate_re
 import 'package:asistencias_app/presentation/screens/admin_dashboard/weekly_average_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/ttl_weekly_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/quarterly_ttl_report_screen.dart';
-import 'package:asistencias_app/data/models/user_model.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/core/utils/date_utils.dart';
-import 'dart:io';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -599,7 +597,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       },
       child: Scaffold(
       appBar: AppBar(
-        title: const Text('Panel de Administración'),
+        title: Row(
+          children: [
+            const AppLogo(width: 30, height: 30),
+            const SizedBox(width: 10),
+            const Text('IBBN Asistencia'),
+          ],
+        ),
+        centerTitle: true,
       ),
       drawer: Drawer(
         child: ListView(
