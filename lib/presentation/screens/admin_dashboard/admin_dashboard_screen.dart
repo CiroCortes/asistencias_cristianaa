@@ -35,12 +35,12 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedIndex = 0;
-  
+
   // Método para mostrar debug en tiempo real (pantalla + terminal)
   void _showDebugSnackBar(String message) {
     // Imprimir en terminal/consola
     print('🔷 DEBUG: $message');
-    
+
     // Mostrar en pantalla
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -52,8 +52,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
   }
-  
-
 
   // Método para limpiar datos inconsistentes de Firestore
   Future<void> _cleanupData(BuildContext context, String cleanupType) async {
@@ -107,42 +105,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _executeCleanupScript(String cleanupType) async {
     print('\n🧹 ===== INICIANDO LIMPIEZA DE DATOS =====');
     print('📋 Tipo de limpieza: $cleanupType');
-    
+
     final firestore = FirebaseFirestore.instance;
     int deletedRecords = 0;
     int deletedAttendees = 0;
     int deletedMeetings = 0;
-    
+
     try {
       if (cleanupType == 'analyze') {
         // ANÁLISIS: Solo contar y mostrar información sin eliminar
         _showDebugSnackBar('🔍 Analizando datos...');
-        
+
         // Analizar registros de asistencia
-        final allRecords = await firestore.collection('attendanceRecords').get();
+        final allRecords =
+            await firestore.collection('attendanceRecords').get();
         final testRecords = allRecords.docs.where((doc) {
           final data = doc.data();
           return data['recordedByUserId'] == 'test-admin-quilicura' ||
-                 (data['createdByUserId'] != null && data['createdByUserId'] == 'test-admin-quilicura');
+              (data['createdByUserId'] != null &&
+                  data['createdByUserId'] == 'test-admin-quilicura');
         }).toList();
-        
+
         // Analizar asistentes
         final allAttendees = await firestore.collection('attendees').get();
         final testAttendees = allAttendees.docs.where((doc) {
           final data = doc.data();
           final name = data['name'] ?? '';
           return data['createdByUserId'] == 'test-admin-quilicura' ||
-                 name.contains('TEST') ||
-                 name.contains('test');
+              name.contains('TEST') ||
+              name.contains('test');
         }).toList();
-        
+
         // Analizar meetings
-        final allMeetings = await firestore.collection('recurring_meetings').get();
+        final allMeetings =
+            await firestore.collection('recurring_meetings').get();
         final testMeetings = allMeetings.docs.where((doc) {
           final data = doc.data();
           return data['createdByUserId'] == 'test-admin-quilicura';
         }).toList();
-        
+
         print('\n📊 ===== ANÁLISIS DE DATOS =====');
         print('📋 Registros de asistencia:');
         print('   • Total: ${allRecords.docs.length}');
@@ -153,57 +154,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         print('📅 Meetings recurrentes:');
         print('   • Total: ${allMeetings.docs.length}');
         print('   • TEST/Problemáticos: ${testMeetings.length}');
-        
-        _showDebugSnackBar('📊 Análisis completado - Ver consola para detalles');
+
+        _showDebugSnackBar(
+            '📊 Análisis completado - Ver consola para detalles');
         return;
       }
-      
+
       // LIMPIEZA DE REGISTROS DE ASISTENCIA
       _showDebugSnackBar('🗑️ Paso 1: Limpiando registros de asistencia...');
-      
+
       if (cleanupType == 'full') {
         // Eliminar TODOS los registros de asistencia
-        final recordsQuery = await firestore.collection('attendanceRecords').get();
+        final recordsQuery =
+            await firestore.collection('attendanceRecords').get();
         for (final doc in recordsQuery.docs) {
           await doc.reference.delete();
           deletedRecords++;
         }
-        _showDebugSnackBar('✅ Eliminados $deletedRecords registros de asistencia');
+        _showDebugSnackBar(
+            '✅ Eliminados $deletedRecords registros de asistencia');
       } else {
         // Solo eliminar registros TEST (buscar por ambos campos para compatibilidad)
         final testRecords1 = await firestore
             .collection('attendanceRecords')
             .where('recordedByUserId', isEqualTo: 'test-admin-quilicura')
             .get();
-        
+
         final testRecords2 = await firestore
             .collection('attendanceRecords')
             .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
             .get();
-        
+
         // Combinar resultados evitando duplicados
-        final allTestRecords = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+        final allTestRecords =
+            <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
         for (final doc in testRecords1.docs) {
           allTestRecords[doc.id] = doc;
         }
         for (final doc in testRecords2.docs) {
           allTestRecords[doc.id] = doc;
         }
-        
+
         print('📊 Registros TEST encontrados: ${allTestRecords.length}');
-        
+
         for (final doc in allTestRecords.values) {
           await doc.reference.delete();
           deletedRecords++;
         }
-        
-        _showDebugSnackBar('✅ Eliminados $deletedRecords registros de asistencia TEST');
+
+        _showDebugSnackBar(
+            '✅ Eliminados $deletedRecords registros de asistencia TEST');
       }
-      
+
       // LIMPIEZA DE ASISTENTES (solo para 'test' y 'full')
       if (cleanupType != 'analyze') {
         _showDebugSnackBar('👥 Paso 2: Limpiando asistentes...');
-        
+
         if (cleanupType == 'full') {
           // Eliminar TODOS los asistentes (¡CUIDADO!)
           final allAttendees = await firestore.collection('attendees').get();
@@ -217,33 +223,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               .collection('attendees')
               .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
               .get();
-          
+
           for (final doc in testAttendees.docs) {
             await doc.reference.delete();
             deletedAttendees++;
           }
         }
-        
+
         _showDebugSnackBar('✅ Eliminados $deletedAttendees asistentes');
       }
-      
+
       // LIMPIEZA DE MEETINGS RECURRENTES (solo TEST)
       if (cleanupType != 'analyze') {
         _showDebugSnackBar('📅 Paso 3: Limpiando meetings recurrentes TEST...');
-        
+
         final testMeetings = await firestore
             .collection('recurring_meetings')
             .where('createdByUserId', isEqualTo: 'test-admin-quilicura')
             .get();
-        
+
         for (final doc in testMeetings.docs) {
           await doc.reference.delete();
           deletedMeetings++;
         }
-        
+
         _showDebugSnackBar('✅ Eliminados $deletedMeetings meetings TEST');
       }
-      
+
       // RESUMEN FINAL
       print('\n🎉 ===== LIMPIEZA COMPLETADA =====');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -251,10 +257,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       print('  📋 Registros de asistencia: $deletedRecords');
       print('  👥 Asistentes: $deletedAttendees');
       print('  📅 Meetings recurrentes: $deletedMeetings');
-      print('  💰 Costo Firebase: ~\$${(deletedRecords + deletedAttendees + deletedMeetings) * 0.0001} USD');
+      print(
+          '  💰 Costo Firebase: ~\$${(deletedRecords + deletedAttendees + deletedMeetings) * 0.0001} USD');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('✅ Base de datos limpia. Los gráficos deberían funcionar correctamente.');
-      
+      print(
+          '✅ Base de datos limpia. Los gráficos deberían funcionar correctamente.');
     } catch (e) {
       print('❌ ERROR durante limpieza: $e');
       throw e;
@@ -264,76 +271,82 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // Ejecutar el script de generación de datos de prueba con debug
   Future<void> _executeTestDataScript() async {
     print('\n📋 ===== INICIANDO GENERACIÓN DE DATOS DE PRUEBA =====');
-    
+
     final firestore = FirebaseFirestore.instance;
     final random = Random();
     const adminUserId = 'test-admin-quilicura';
-    
+
     try {
       // DEBUG: Mostrar información paso a paso
       _showDebugSnackBar('🔍 Paso 1: Buscando ruta Quilicura...');
-      
+
       // 1. Usar directamente el ID conocido de Quilicura
       const quilicuraId = 'QsszuqTZk0QDKHN8iTj6';
       print('🎯 Buscando commune con ID: $quilicuraId');
-      
-      final quilicuraDoc = await firestore.collection('communes').doc(quilicuraId).get();
+
+      final quilicuraDoc =
+          await firestore.collection('communes').doc(quilicuraId).get();
       print('📄 Documento obtenido. Existe: ${quilicuraDoc.exists}');
-      
+
       if (!quilicuraDoc.exists) {
         print('❌ ERROR: El documento no existe en Firebase');
         throw Exception('El documento Quilicura no existe en Firebase');
       }
-      
+
       final quilicuraData = quilicuraDoc.data()!;
       print('📊 Datos del documento: $quilicuraData');
-      
+
       final quilicuraName = quilicuraData['name'] ?? 'Sin nombre';
       final cityId = quilicuraData['cityId'] ?? 'Sin ciudad';
       final locationIds = List<String>.from(quilicuraData['locationIds'] ?? []);
-      
+
       print('✅ Quilicura procesada:');
       print('   - Nombre: "$quilicuraName"');
       print('   - CityId: $cityId');
       print('   - LocationIds: $locationIds');
       print('   - Total sectores en array: ${locationIds.length}');
-      
-      _showDebugSnackBar('✅ Quilicura encontrada: "$quilicuraName" (${locationIds.length} sectores)');
-      
+
+      _showDebugSnackBar(
+          '✅ Quilicura encontrada: "$quilicuraName" (${locationIds.length} sectores)');
+
       await Future.delayed(const Duration(seconds: 1));
-      
+
       // 2. Obtener sectores de Quilicura
       print('\n🗺️ ===== PASO 2: BUSCANDO SECTORES =====');
       _showDebugSnackBar('🔍 Paso 2: Buscando sectores de Quilicura...');
-      
-      print('🔍 Consultando collection "locations" con communeId = $quilicuraId');
-      
+
+      print(
+          '🔍 Consultando collection "locations" con communeId = $quilicuraId');
+
       final sectorsQuery = await firestore
           .collection('locations')
           .where('communeId', isEqualTo: quilicuraId)
           .get();
-      
-      print('📊 Query ejecutada. Documentos encontrados: ${sectorsQuery.docs.length}');
-      
+
+      print(
+          '📊 Query ejecutada. Documentos encontrados: ${sectorsQuery.docs.length}');
+
       if (sectorsQuery.docs.isEmpty) {
-        print('❌ ERROR: No se encontraron sectores para communeId: $quilicuraId');
-        
+        print(
+            '❌ ERROR: No se encontraron sectores para communeId: $quilicuraId');
+
         // DEBUG: Listar todos los sectores disponibles
         print('🔍 Investigando todos los sectores disponibles...');
         final allLocationsQuery = await firestore.collection('locations').get();
         print('📋 Total sectores en DB: ${allLocationsQuery.docs.length}');
-        
+
         for (final doc in allLocationsQuery.docs) {
           final data = doc.data();
-          print('   • ID: ${doc.id} | CommuneId: "${data['communeId']}" | Name: "${data['name']}"');
+          print(
+              '   • ID: ${doc.id} | CommuneId: "${data['communeId']}" | Name: "${data['name']}"');
         }
-        
+
         throw Exception('No se encontraron sectores en Quilicura');
       }
-      
+
       final sectors = sectorsQuery.docs;
       print('✅ Sectores encontrados: ${sectors.length}');
-      
+
       // DEBUG: Mostrar todos los sectores encontrados
       for (int i = 0; i < sectors.length; i++) {
         final sectorData = sectors[i].data();
@@ -341,29 +354,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final sectorId = sectors[i].id;
         print('   📍 Sector ${i + 1}: "$sectorName" (ID: $sectorId)');
       }
-      
+
       int totalAttendees = 0;
-      
+
       // 3. Generar 10 asistentes por sector
       print('\n👥 ===== PASO 3: GENERANDO ASISTENTES =====');
       _showDebugSnackBar('👥 Paso 3: Generando asistentes TEST...');
       await Future.delayed(const Duration(seconds: 1));
-      
+
       int sectorCount = 0;
-      
+
       for (final sector in sectors) {
         sectorCount++;
         final sectorId = sector.id;
         final sectorName = sector.data()['name'] ?? 'Sector ${sector.id}';
-        
-        print('📝 Sector $sectorCount/${sectors.length}: "$sectorName" (ID: $sectorId)');
+
+        print(
+            '📝 Sector $sectorCount/${sectors.length}: "$sectorName" (ID: $sectorId)');
         _showDebugSnackBar('📝 Creando 10 asistentes para: $sectorName');
-        
+
         for (int i = 1; i <= 10; i++) {
           final attendeeData = {
             'firstName': 'TEST Nombre$i',
             'lastName': 'TEST Apellido$i $sectorName',
-            'phone': '+569${1000 + random.nextInt(9000)}${1000 + random.nextInt(9000)}',
+            'phone':
+                '+569${1000 + random.nextInt(9000)}${1000 + random.nextInt(9000)}',
             'address': 'TEST Dirección $i, $sectorName, Quilicura',
             'sectorId': sectorId,
             'isActive': true,
@@ -371,101 +386,127 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
             'createdByUserId': adminUserId,
           };
-          
-          print('   👤 Creando asistente $i/10: ${attendeeData['firstName']} ${attendeeData['lastName']}');
-          
+
+          print(
+              '   👤 Creando asistente $i/10: ${attendeeData['firstName']} ${attendeeData['lastName']}');
+
           await firestore.collection('attendees').add(attendeeData);
           totalAttendees++;
         }
-        
+
         print('✅ Completado sector "$sectorName": 10 asistentes creados');
         await Future.delayed(const Duration(milliseconds: 300));
       }
-      
+
       print('🎉 TOTAL ASISTENTES CREADOS: $totalAttendees');
       _showDebugSnackBar('✅ Creados $totalAttendees asistentes TEST');
       await Future.delayed(const Duration(seconds: 1));
-      
+
       // 4. Generar registros de asistencia para junio y julio 2025
       print('\n📊 ===== PASO 4: GENERANDO REGISTROS DE ASISTENCIA =====');
       _showDebugSnackBar('📊 Paso 4: Generando registros de asistencia...');
       await Future.delayed(const Duration(seconds: 1));
-      
-      print('🔍 Buscando asistentes TEST creados (createdByUserId = $adminUserId)');
-      
+
+      print(
+          '🔍 Buscando asistentes TEST creados (createdByUserId = $adminUserId)');
+
       final attendeesQuery = await firestore
           .collection('attendees')
           .where('createdByUserId', isEqualTo: adminUserId)
           .get();
-      
+
       final allAttendees = attendeesQuery.docs;
       print('👥 Asistentes TEST encontrados: ${allAttendees.length}');
-      _showDebugSnackBar('👥 Encontrados ${allAttendees.length} asistentes TEST');
-      
+      _showDebugSnackBar(
+          '👥 Encontrados ${allAttendees.length} asistentes TEST');
+
       if (allAttendees.isEmpty) {
-        throw Exception('No se encontraron asistentes TEST creados previamente');
+        throw Exception(
+            'No se encontraron asistentes TEST creados previamente');
       }
-      
+
       // Fechas para junio y julio 2025
       final meetingDates = <DateTime>[];
-      
+
       // Junio 2025
       meetingDates.addAll([
-        DateTime(2025, 6, 4, 19, 30), DateTime(2025, 6, 11, 19, 30),
-        DateTime(2025, 6, 18, 19, 30), DateTime(2025, 6, 25, 19, 30),
+        DateTime(2025, 6, 4, 19, 30),
+        DateTime(2025, 6, 11, 19, 30),
+        DateTime(2025, 6, 18, 19, 30),
+        DateTime(2025, 6, 25, 19, 30),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 6, 7, 10, 0), DateTime(2025, 6, 14, 10, 0),
-        DateTime(2025, 6, 21, 10, 0), DateTime(2025, 6, 28, 10, 0),
+        DateTime(2025, 6, 7, 10, 0),
+        DateTime(2025, 6, 14, 10, 0),
+        DateTime(2025, 6, 21, 10, 0),
+        DateTime(2025, 6, 28, 10, 0),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 6, 1, 10, 0), DateTime(2025, 6, 8, 10, 0),
-        DateTime(2025, 6, 15, 10, 0), DateTime(2025, 6, 22, 10, 0), DateTime(2025, 6, 29, 10, 0),
+        DateTime(2025, 6, 1, 10, 0),
+        DateTime(2025, 6, 8, 10, 0),
+        DateTime(2025, 6, 15, 10, 0),
+        DateTime(2025, 6, 22, 10, 0),
+        DateTime(2025, 6, 29, 10, 0),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 6, 1, 16, 0), DateTime(2025, 6, 8, 16, 0),
-        DateTime(2025, 6, 15, 16, 0), DateTime(2025, 6, 22, 16, 0), DateTime(2025, 6, 29, 16, 0),
+        DateTime(2025, 6, 1, 16, 0),
+        DateTime(2025, 6, 8, 16, 0),
+        DateTime(2025, 6, 15, 16, 0),
+        DateTime(2025, 6, 22, 16, 0),
+        DateTime(2025, 6, 29, 16, 0),
       ]);
-      
+
       // Julio 2025
       meetingDates.addAll([
-        DateTime(2025, 7, 2, 19, 30), DateTime(2025, 7, 9, 19, 30),
-        DateTime(2025, 7, 16, 19, 30), DateTime(2025, 7, 23, 19, 30), DateTime(2025, 7, 30, 19, 30),
+        DateTime(2025, 7, 2, 19, 30),
+        DateTime(2025, 7, 9, 19, 30),
+        DateTime(2025, 7, 16, 19, 30),
+        DateTime(2025, 7, 23, 19, 30),
+        DateTime(2025, 7, 30, 19, 30),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 7, 5, 10, 0), DateTime(2025, 7, 12, 10, 0),
-        DateTime(2025, 7, 19, 10, 0), DateTime(2025, 7, 26, 10, 0),
+        DateTime(2025, 7, 5, 10, 0),
+        DateTime(2025, 7, 12, 10, 0),
+        DateTime(2025, 7, 19, 10, 0),
+        DateTime(2025, 7, 26, 10, 0),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 7, 6, 10, 0), DateTime(2025, 7, 13, 10, 0),
-        DateTime(2025, 7, 20, 10, 0), DateTime(2025, 7, 27, 10, 0),
+        DateTime(2025, 7, 6, 10, 0),
+        DateTime(2025, 7, 13, 10, 0),
+        DateTime(2025, 7, 20, 10, 0),
+        DateTime(2025, 7, 27, 10, 0),
       ]);
       meetingDates.addAll([
-        DateTime(2025, 7, 6, 16, 0), DateTime(2025, 7, 13, 16, 0),
-        DateTime(2025, 7, 20, 16, 0), DateTime(2025, 7, 27, 16, 0),
+        DateTime(2025, 7, 6, 16, 0),
+        DateTime(2025, 7, 13, 16, 0),
+        DateTime(2025, 7, 20, 16, 0),
+        DateTime(2025, 7, 27, 16, 0),
       ]);
-      
+
       int totalRecords = 0;
       int processedSectors = 0;
-      
+
       // 5. Generar registros de asistencia
       print('\n📅 ===== PASO 5: GENERANDO REGISTROS DE ASISTENCIA =====');
-      print('📊 Total fechas de reuniones jun-jul 2025: ${meetingDates.length}');
+      print(
+          '📊 Total fechas de reuniones jun-jul 2025: ${meetingDates.length}');
       _showDebugSnackBar('📅 Generando registros para jun-jul 2025...');
-      
+
       for (final sector in sectors) {
         final sectorId = sector.id;
         final sectorName = sector.data()['name'] ?? 'Sector';
-        final sectorAttendees = allAttendees.where(
-          (attendee) => attendee.data()['sectorId'] == sectorId
-        ).toList();
-        
+        final sectorAttendees = allAttendees
+            .where((attendee) => attendee.data()['sectorId'] == sectorId)
+            .toList();
+
         processedSectors++;
-        print('⏳ Sector $processedSectors/${sectors.length}: "$sectorName" (${sectorAttendees.length} asistentes)');
-        _showDebugSnackBar('⏳ Procesando sector $processedSectors/${sectors.length}: $sectorName');
-        
+        print(
+            '⏳ Sector $processedSectors/${sectors.length}: "$sectorName" (${sectorAttendees.length} asistentes)');
+        _showDebugSnackBar(
+            '⏳ Procesando sector $processedSectors/${sectors.length}: $sectorName');
+
         int sectorRecords = 0;
-        
+
         for (final date in meetingDates) {
           String meetingType;
           if (date.weekday == 3 && date.hour == 19) {
@@ -477,12 +518,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           } else {
             meetingType = 'culto_domingo_tarde';
           }
-          
+
           // Seleccionar asistentes (70-90% asistencia)
           final attendanceRate = 0.7 + (random.nextDouble() * 0.2);
-          final attendingCount = (sectorAttendees.length * attendanceRate).round();
-          final attendingAttendees = sectorAttendees.take(attendingCount).toList();
-          
+          final attendingCount =
+              (sectorAttendees.length * attendanceRate).round();
+          final attendingAttendees =
+              sectorAttendees.take(attendingCount).toList();
+
           for (final attendee in attendingAttendees) {
             final recordData = {
               'attendeeId': attendee.id,
@@ -494,17 +537,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               'updatedAt': FieldValue.serverTimestamp(),
               'createdByUserId': adminUserId,
             };
-            
+
             await firestore.collection('attendanceRecords').add(recordData);
             totalRecords++;
             sectorRecords++;
           }
         }
-        
-        print('   ✅ Sector "$sectorName" completado: $sectorRecords registros creados');
+
+        print(
+            '   ✅ Sector "$sectorName" completado: $sectorRecords registros creados');
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      
+
       // Debug final
       print('\n🎉 ===== PROCESO COMPLETADO =====');
       print('📊 RESUMEN FINAL:');
@@ -513,8 +557,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       print('   🏙️  Ruta: Quilicura');
       print('   📍 Sectores procesados: ${sectors.length}');
       print('   💰 Costo estimado Firebase: < \$0.002 USD');
-      
-      _showDebugSnackBar('🎉 ¡COMPLETADO! Asistentes: $totalAttendees | Registros: $totalRecords');
+
+      _showDebugSnackBar(
+          '🎉 ¡COMPLETADO! Asistentes: $totalAttendees | Registros: $totalRecords');
     } catch (e) {
       print('❌ ERROR GENERAL en generación de datos: $e');
       print('📍 Stack trace: ${StackTrace.current}');
@@ -563,280 +608,291 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) {
-          return;
-        }
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Confirmar Salida'),
-            content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                  // Cierra la app
-                  // SystemNavigator.pop();
-                },
-                child: const Text('Salir'),
-              ),
-            ],
-          ),
-        ).then((exit) {
-          if (exit ?? false) {
-             // Cierra la app
-             // SystemNavigator.pop();
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (didPop) {
+            return;
           }
-        });
-      },
-      child: Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const AppLogo(width: 30, height: 30),
-            const SizedBox(width: 10),
-            const Text('IBBN Asistencia'),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: user.photoUrl != null
-                        ? NetworkImage(user.photoUrl!)
-                        : null,
-                    child: user.photoUrl == null
-                        ? Text(user.displayName[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 24, color: Colors.white))
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    user.displayName,
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                  Text(
-                    user.email,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Confirmar Salida'),
+              content: const Text(
+                  '¿Estás seguro de que quieres salir de la aplicación?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                    // Cierra la app
+                    // SystemNavigator.pop();
+                  },
+                  child: const Text('Salir'),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Perfil'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              },
+          ).then((exit) {
+            if (exit ?? false) {
+              // Cierra la app
+              // SystemNavigator.pop();
+            }
+          });
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                const AppLogo(width: 30, height: 30),
+                const SizedBox(width: 10),
+                const Text('IBBN Asistencia'),
+              ],
             ),
-            
-            if (PermissionUtils.canManageUsers(user))
-              ListTile(
-                leading: const Icon(Icons.people_alt),
-                title: const Text('Gestionar Usuarios'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const UserManagementScreen(),
-                    ),
-                  );
-                },
-              ),
-            if (PermissionUtils.canManageLocations(user))
-              ListTile(
-                leading: const Icon(Icons.location_on),
-                title: const Text('Gestionar Ubicaciones'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const LocationsScreen(),
-                    ),
-                  );
-                },
-              ),
-            if (PermissionUtils.canViewReports(user))
-              ListTile(
-                leading: const Icon(Icons.file_download, color: Colors.green),
-                title: const Text('Generar Reportes'),
-                subtitle: const Text('Exportar a Excel/CSV'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const GenerateReportsScreen(),
-                    ),
-                  );
-                },
-              ),
-            // Nuevo reporte de promedios por días de la semana
-            if (PermissionUtils.canViewReports(user))
-              ListTile(
-                leading: const Icon(Icons.table_chart),
-                title: const Text('Reporte de Promedios por Días'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const WeeklyAverageReportScreen(),
-                    ),
-                  );
-                },
-              ),
-            // Reporte TTLs por mes y semana
-            if (PermissionUtils.canViewReports(user))
-              ListTile(
-                leading: const Icon(Icons.analytics),
-                title: const Text('Reporte TTLs por Mes y Semana'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TTLWeeklyReportScreen(),
-                    ),
-                  );
-                },
-              ),
-            // Reporte Trimestral TTLs
-            if (PermissionUtils.canViewReports(user))
-              ListTile(
-                leading: const Icon(Icons.bar_chart),
-                title: const Text('Reporte Trimestral TTLs'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const QuarterlyTTLReportScreen(),
-                    ),
-                  );
-                },
-              ),
-            // Utilidades de administrador (solo para ciro.720@gmail.com)
-            if (user.email == 'ciro.720@gmail.com')
-              ListTile(
-                leading: const Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
-                title: const Text('⚙️ Utilidades de Administrador'),
-                subtitle: const Text('Generar datos, limpiar base de datos'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminUtilitiesScreen(),
-                    ),
-                  );
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text('Acerca de'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Cerrar Sesión'),
-              onTap: () async {
-                // Cierra el drawer
-                Navigator.pop(context);
-
-                // Muestra un diálogo de carga
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Dialog(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(width: 20),
-                            Text("Cerrando sesión..."),
-                          ],
-                        ),
+            centerTitle: true,
+          ),
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
+                        child: user.photoUrl == null
+                            ? Text(user.displayName[0].toUpperCase(),
+                                style: const TextStyle(
+                                    fontSize: 24, color: Colors.white))
+                            : null,
                       ),
+                      const SizedBox(height: 10),
+                      Text(
+                        user.displayName,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                      Text(
+                        user.email,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('Perfil'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ProfileScreen()),
                     );
                   },
-                );
+                ),
 
-                // Espera 2 segundos para la animación
-                await Future.delayed(const Duration(seconds: 2));
+                if (PermissionUtils.canManageUsers(user))
+                  ListTile(
+                    leading: const Icon(Icons.people_alt),
+                    title: const Text('Gestionar Usuarios'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserManagementScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                if (PermissionUtils.canManageLocations(user))
+                  ListTile(
+                    leading: const Icon(Icons.location_on),
+                    title: const Text('Gestionar Ubicaciones'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LocationsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                if (PermissionUtils.canViewReports(user))
+                  ListTile(
+                    leading:
+                        const Icon(Icons.file_download, color: Colors.green),
+                    title: const Text('Generar Reportes'),
+                    subtitle: const Text('Exportar a Excel/CSV'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GenerateReportsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                // Nuevo reporte de promedios por días de la semana
+                if (PermissionUtils.canViewReports(user))
+                  ListTile(
+                    leading: const Icon(Icons.table_chart),
+                    title: const Text('Reporte de Promedios por Días'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const WeeklyAverageReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                // Reporte TTLs por mes y semana
+                if (PermissionUtils.canViewReports(user))
+                  ListTile(
+                    leading: const Icon(Icons.analytics),
+                    title: const Text('Reporte TTLs por Mes y Semana'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TTLWeeklyReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                // Reporte Trimestral TTLs
+                if (PermissionUtils.canViewReports(user))
+                  ListTile(
+                    leading: const Icon(Icons.bar_chart),
+                    title: const Text('Reporte Trimestral TTLs'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const QuarterlyTTLReportScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                // Utilidades de administrador (solo para ciro.720@gmail.com)
+                if (user.email == 'ciro.720@gmail.com')
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings,
+                        color: Colors.deepPurple),
+                    title: const Text('⚙️ Utilidades de Administrador'),
+                    subtitle:
+                        const Text('Generar datos, limpiar base de datos'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminUtilitiesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.info),
+                  title: const Text('Acerca de'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Cerrar Sesión'),
+                  onTap: () async {
+                    // Cierra el drawer
+                    Navigator.pop(context);
 
-                // Cierra el diálogo antes de desloguear
-                if (mounted) {
-                  Navigator.pop(context);
-                }
+                    // Muestra un diálogo de carga
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const Dialog(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(width: 20),
+                                Text("Cerrando sesión..."),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
 
-                // Ejecuta el cierre de sesión
-                await userProvider.signOut();
-              },
+                    // Espera 2 segundos para la animación
+                    await Future.delayed(const Duration(seconds: 2));
+
+                    // Cierra el diálogo antes de desloguear
+                    if (mounted) {
+                      Navigator.pop(context);
+                    }
+
+                    // Ejecuta el cierre de sesión
+                    await userProvider.signOut();
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Asistencia',
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: _widgetOptions,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Eventos',
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment),
+                label: 'Asistencia',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.event),
+                label: 'Eventos',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group),
+                label: 'Asistentes',
+              ),
+            ],
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Asistentes',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
-    ));
+        ));
   }
 }
 
@@ -861,9 +917,9 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
 
   Future<void> _initializeData() async {
     if (_isInitialized) return;
-    
+
     final locationProvider = context.read<LocationProvider>();
-    
+
     // Cargar datos de ubicación necesarios para ambos gráficos
     if (locationProvider.cities.isEmpty) {
       await locationProvider.loadCities();
@@ -893,76 +949,99 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
         final records = snapshot.data!.where((r) => r != null).toList();
         // Filtrar registros del mes actual
         final now = DateTime.now();
-        final currentMonthRecords = records.where((r) => r.date.month == now.month && r.date.year == now.year).toList();
-        
+        final currentMonthRecords = records
+            .where((r) => r.date.month == now.month && r.date.year == now.year)
+            .toList();
+
         // Formatear el nombre del mes actual
         final monthNames = [
-          '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+          '',
+          'Enero',
+          'Febrero',
+          'Marzo',
+          'Abril',
+          'Mayo',
+          'Junio',
+          'Julio',
+          'Agosto',
+          'Septiembre',
+          'Octubre',
+          'Noviembre',
+          'Diciembre'
         ];
         final currentMonthName = monthNames[now.month];
-        
+
         // Calcular semana actual y anterior
         final currentWeek = getWeekNumber(now);
         final previousWeek = currentWeek - 1;
         final currentYear = now.year;
-        
+
         // Filtrar registros por semanas
-        final currentWeekRecords = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
-        final previousWeekRecords = records.where((r) => r.weekNumber == previousWeek && r.year == currentYear).toList();
-        
-        // Calcular asistencia mensual
-        int totalMonthlyMembers = 0;
-        int totalMonthlyListeners = 0;
-        int totalMonthlyVisitors = 0;
+        final currentWeekRecords = records
+            .where((r) => r.weekNumber == currentWeek && r.year == currentYear)
+            .toList();
+        final previousWeekRecords = records
+            .where((r) => r.weekNumber == previousWeek && r.year == currentYear)
+            .toList();
+
+        // Calcular asistentes únicos mensuales
+        Set<String> monthlyUniqueAttendees = {};
         for (final record in currentMonthRecords) {
-          final ids = record.attendedAttendeeIds;
-          for (final id in ids) {
-            final attendee = attendees.firstWhere(
-              (a) => a.id == id,
-              orElse: () => AttendeeModel(id: '', type: '', sectorId: '', createdAt: DateTime.now(), createdByUserId: ''),
-            );
-            if (attendee.type == 'member') totalMonthlyMembers++;
-            if (attendee.type == 'listener') totalMonthlyListeners++;
-          }
-          totalMonthlyVisitors += record.visitorCount;
+          monthlyUniqueAttendees.addAll(record.attendedAttendeeIds);
         }
-        final totalMonthlyAttendance = totalMonthlyMembers + totalMonthlyListeners + totalMonthlyVisitors;
-        
-        // Calcular asistencia semanal actual
-        int currentWeekAttendance = 0;
+        int totalMonthlyUniqueAttendance = monthlyUniqueAttendees.length;
+
+        // Calcular asistentes únicos semanales actuales
+        Set<String> currentWeekUniqueAttendees = {};
         for (final record in currentWeekRecords) {
-          currentWeekAttendance += record.attendedAttendeeIds.length + record.visitorCount;
+          currentWeekUniqueAttendees.addAll(record.attendedAttendeeIds);
         }
-        
-        // Calcular asistencia semanal anterior
-        int previousWeekAttendance = 0;
+        int currentWeekUniqueAttendance = currentWeekUniqueAttendees.length;
+
+        // Calcular asistentes únicos semanales anteriores
+        Set<String> previousWeekUniqueAttendees = {};
         for (final record in previousWeekRecords) {
-          previousWeekAttendance += record.attendedAttendeeIds.length + record.visitorCount;
+          previousWeekUniqueAttendees.addAll(record.attendedAttendeeIds);
         }
-        
+        int previousWeekUniqueAttendance = previousWeekUniqueAttendees.length;
+
         // Calcular TTL por días específicos de la semana actual
-        final currentWeekRecordsFiltered = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
-        
+        final currentWeekRecordsFiltered = records
+            .where((r) => r.weekNumber == currentWeek && r.year == currentYear)
+            .toList();
+
         // TTL Miércoles
         final ttlMiercoles = currentWeekRecordsFiltered
             .where((r) => r.date.weekday == DateTime.wednesday)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
-        // TTL Sábados  
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
+        // TTL Sábados
         final ttlSabados = currentWeekRecordsFiltered
             .where((r) => r.date.weekday == DateTime.saturday)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
         // TTL Domingo AM (antes de las 2 PM)
         final ttlDomingoAM = currentWeekRecordsFiltered
             .where((r) => r.date.weekday == DateTime.sunday && r.date.hour < 14)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
         // TTL Domingo PM (después de las 2 PM)
         final ttlDomingoPM = currentWeekRecordsFiltered
-            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            .where(
+                (r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -985,12 +1064,13 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Asistencia Total - $currentMonthName $currentYear',
-                              style: const TextStyle(fontSize: 16, color: Colors.grey),
+                              'Asistentes Únicos - $currentMonthName $currentYear',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '$totalMonthlyAttendance',
+                              '$totalMonthlyUniqueAttendance',
                               style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -1011,51 +1091,54 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Asistencia Semanal',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                              'Asistentes Únicos Semanales',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            Text(
-                                  'Semana $currentWeek: $currentWeekAttendance',
-                              style: TextStyle(
+                                Text(
+                                  'Semana $currentWeek: $currentWeekUniqueAttendance',
+                                  style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).primaryColor),
+                                      color: Theme.of(context).primaryColor),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Semana $previousWeek: $previousWeekAttendance',
+                                  'Semana $previousWeek: $previousWeekUniqueAttendance',
                                   style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600]),
+                                      fontSize: 14, color: Colors.grey[600]),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Text(
-                                      'Diferencia: ${currentWeekAttendance - previousWeekAttendance}',
+                                      'Diferencia: ${currentWeekUniqueAttendance - previousWeekUniqueAttendance}',
                                       style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
-                                          color: currentWeekAttendance >= previousWeekAttendance 
-                                              ? Colors.green 
+                                          color: currentWeekUniqueAttendance >=
+                                                  previousWeekUniqueAttendance
+                                              ? Colors.green
                                               : Colors.red),
                                     ),
                                     const SizedBox(width: 4),
                                     Icon(
-                                      currentWeekAttendance >= previousWeekAttendance 
-                                          ? Icons.trending_up 
+                                      currentWeekUniqueAttendance >=
+                                              previousWeekUniqueAttendance
+                                          ? Icons.trending_up
                                           : Icons.trending_down,
                                       size: 16,
-                                      color: currentWeekAttendance >= previousWeekAttendance 
-                                          ? Colors.green 
+                                      color: currentWeekUniqueAttendance >=
+                                              previousWeekUniqueAttendance
+                                          ? Colors.green
                                           : Colors.red,
-                            ),
-                          ],
-                        ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ],
@@ -1084,11 +1167,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL MIERC',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             Text(
                               'Semana $currentWeek',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -1114,11 +1201,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL SABADO',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             Text(
                               'Semana $currentWeek',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -1144,11 +1235,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL DOM AM',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             Text(
                               'Semana $currentWeek',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -1174,11 +1269,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL DOM PM',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             Text(
                               'Semana $currentWeek',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                              style: TextStyle(
+                                  fontSize: 10, color: Colors.grey[500]),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -1204,88 +1303,206 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                 const SizedBox(height: 24), // Más espacio para el título
                 Container(
                   height: 280, // Altura aumentada para acomodar tooltips
-                  padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+                  padding: const EdgeInsets.only(
+                      top: 30,
+                      bottom: 20,
+                      left: 16,
+                      right: 16), // Padding interno
                   child: BarChart(
                     BarChartData(
-                          alignment: BarChartAlignment.spaceEvenly,
-                          // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
-                          maxY: () {
-                            final values = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors];
-                            if (values.isEmpty || values.every((v) => v == 0)) {
-                              return 10.0; // Valor por defecto si no hay datos
+                      alignment: BarChartAlignment.spaceEvenly,
+                      // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                      maxY: () {
+                        // Calcular asistentes únicos por tipo para el mes actual
+                        Set<String> monthlyUniqueMembers = {};
+                        Set<String> monthlyUniqueListeners = {};
+                        int totalMonthlyVisitors = 0;
+
+                        for (final record in currentMonthRecords) {
+                          // Contar visitas (se mantienen igual)
+                          totalMonthlyVisitors += record.visitorCount;
+
+                          // Contar miembros y oyentes únicos
+                          for (final attendeeId in record.attendedAttendeeIds) {
+                            final attendee = attendees.firstWhere(
+                              (a) => a.id == attendeeId,
+                              orElse: () => AttendeeModel(
+                                  id: '',
+                                  type: '',
+                                  sectorId: '',
+                                  createdAt: DateTime.now(),
+                                  createdByUserId: ''),
+                            );
+                            if (attendee.type == 'member') {
+                              monthlyUniqueMembers.add(attendeeId);
+                            } else if (attendee.type == 'listener') {
+                              monthlyUniqueListeners.add(attendeeId);
                             }
-                            final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
-                            return maxValue * 1.15; // 15% de margen, escalado dinámicamente
-                          }(),
-                          barTouchData: BarTouchData(
-                            enabled: false, // Desactivado porque tooltips están siempre visibles
-                            touchTooltipData: BarTouchTooltipData(
-                              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
-                              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
-                              tooltipRoundedRadius: 4,
-                              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                              // Offset para posicionar tooltip justo encima de la barra
-                              tooltipMargin: 8,
-                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                String value = '';
-                                Color color = Colors.black;
-                                switch (group.x) {
-                                  case 0:
-                                    value = '$totalMonthlyMembers';
-                                    color = Colors.blue;
-                                    break;
-                                  case 1:
-                                    value = '$totalMonthlyListeners';
-                                    color = Colors.orange;
-                                    break;
-                                  case 2:
-                                    value = '$totalMonthlyVisitors';
-                                    color = Colors.green;
-                                    break;
-                                }
-                                return BarTooltipItem(
-                                  value,
-                                  TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
+                          }
+                        }
+
+                        final values = [
+                          monthlyUniqueMembers.length,
+                          monthlyUniqueListeners.length,
+                          totalMonthlyVisitors
+                        ];
+                        if (values.isEmpty || values.every((v) => v == 0)) {
+                          return 10.0; // Valor por defecto si no hay datos
+                        }
+                        final maxValue =
+                            values.reduce((a, b) => a > b ? a : b).toDouble();
+                        return maxValue *
+                            1.15; // 15% de margen, escalado dinámicamente
+                      }(),
+                      barTouchData: BarTouchData(
+                        enabled:
+                            false, // Desactivado porque tooltips están siempre visibles
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipBgColor:
+                              Colors.white.withOpacity(0.9), // Fondo ligero
+                          tooltipBorder:
+                              BorderSide(color: Colors.grey.shade300, width: 1),
+                          tooltipRoundedRadius: 4,
+                          tooltipPadding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 4),
+                          // Offset para posicionar tooltip justo encima de la barra
+                          tooltipMargin: 8,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            String value = '';
+                            Color color = Colors.black;
+
+                            // Calcular asistentes únicos por tipo para el mes actual
+                            Set<String> monthlyUniqueMembers = {};
+                            Set<String> monthlyUniqueListeners = {};
+                            int totalMonthlyVisitors = 0;
+
+                            for (final record in currentMonthRecords) {
+                              // Contar visitas (se mantienen igual)
+                              totalMonthlyVisitors += record.visitorCount;
+
+                              // Contar miembros y oyentes únicos
+                              for (final attendeeId
+                                  in record.attendedAttendeeIds) {
+                                final attendee = attendees.firstWhere(
+                                  (a) => a.id == attendeeId,
+                                  orElse: () => AttendeeModel(
+                                      id: '',
+                                      type: '',
+                                      sectorId: '',
+                                      createdAt: DateTime.now(),
+                                      createdByUserId: ''),
                                 );
-                              },
-                            ),
-                          ),
+                                if (attendee.type == 'member') {
+                                  monthlyUniqueMembers.add(attendeeId);
+                                } else if (attendee.type == 'listener') {
+                                  monthlyUniqueListeners.add(attendeeId);
+                                }
+                              }
+                            }
+
+                            switch (group.x) {
+                              case 0:
+                                value = '${monthlyUniqueMembers.length}';
+                                color = Colors.blue;
+                                break;
+                              case 1:
+                                value = '${monthlyUniqueListeners.length}';
+                                color = Colors.orange;
+                                break;
+                              case 2:
+                                value = '$totalMonthlyVisitors';
+                                color = Colors.green;
+                                break;
+                            }
+                            return BarTooltipItem(
+                              value,
+                              TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                       titlesData: FlTitlesData(
                         leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 30, // Espacio reservado para etiquetas
+                            reservedSize:
+                                30, // Espacio reservado para etiquetas
                             getTitlesWidget: (value, meta) {
                               switch (value.toInt()) {
                                 case 0:
-                                  return const Text('Miembros', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                  return const Text('Miembros',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500));
                                 case 1:
-                                  return const Text('Oyentes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                  return const Text('Oyentes',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500));
                                 case 2:
-                                  return const Text('Visitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                  return const Text('Visitas',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500));
                               }
                               return const Text('');
                             },
                           ),
                         ),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
                         horizontalInterval: () {
-                          final maxValue = [totalMonthlyMembers, totalMonthlyListeners, totalMonthlyVisitors]
-                              .reduce((a, b) => a > b ? a : b).toDouble();
-                          return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+                          // Calcular asistentes únicos por tipo para el mes actual
+                          Set<String> monthlyUniqueMembers = {};
+                          Set<String> monthlyUniqueListeners = {};
+                          int totalMonthlyVisitors = 0;
+
+                          for (final record in currentMonthRecords) {
+                            // Contar visitas (se mantienen igual)
+                            totalMonthlyVisitors += record.visitorCount;
+
+                            // Contar miembros y oyentes únicos
+                            for (final attendeeId
+                                in record.attendedAttendeeIds) {
+                              final attendee = attendees.firstWhere(
+                                (a) => a.id == attendeeId,
+                                orElse: () => AttendeeModel(
+                                    id: '',
+                                    type: '',
+                                    sectorId: '',
+                                    createdAt: DateTime.now(),
+                                    createdByUserId: ''),
+                              );
+                              if (attendee.type == 'member') {
+                                monthlyUniqueMembers.add(attendeeId);
+                              } else if (attendee.type == 'listener') {
+                                monthlyUniqueListeners.add(attendeeId);
+                              }
+                            }
+                          }
+
+                          final maxValue = [
+                            monthlyUniqueMembers.length,
+                            monthlyUniqueListeners.length,
+                            totalMonthlyVisitors
+                          ].reduce((a, b) => a > b ? a : b).toDouble();
+                          return maxValue > 100
+                              ? (maxValue / 5).ceilToDouble()
+                              : 20.0; // Líneas de guía inteligentes
                         }(),
                         getDrawingHorizontalLine: (value) => FlLine(
                           color: Colors.grey.shade300,
@@ -1293,45 +1510,104 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         ),
                       ),
                       barGroups: [
-                            BarChartGroupData(
-                              x: 0, 
-                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                              barRods: [BarChartRodData(
-                                toY: totalMonthlyMembers.toDouble(), 
+                        BarChartGroupData(
+                            x: 0,
+                            showingTooltipIndicators: [
+                              0
+                            ], // Siempre mostrar tooltip
+                            barRods: [
+                              BarChartRodData(
+                                toY: () {
+                                  // Calcular miembros únicos
+                                  Set<String> monthlyUniqueMembers = {};
+                                  for (final record in currentMonthRecords) {
+                                    for (final attendeeId
+                                        in record.attendedAttendeeIds) {
+                                      final attendee = attendees.firstWhere(
+                                        (a) => a.id == attendeeId,
+                                        orElse: () => AttendeeModel(
+                                            id: '',
+                                            type: '',
+                                            sectorId: '',
+                                            createdAt: DateTime.now(),
+                                            createdByUserId: ''),
+                                      );
+                                      if (attendee.type == 'member') {
+                                        monthlyUniqueMembers.add(attendeeId);
+                                      }
+                                    }
+                                  }
+                                  return monthlyUniqueMembers.length.toDouble();
+                                }(),
                                 color: Colors.blue.shade600,
                                 width: 35,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(4),
                                   topRight: Radius.circular(4),
                                 ),
-                              )]
-                            ),
-                            BarChartGroupData(
-                              x: 1, 
-                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                              barRods: [BarChartRodData(
-                                toY: totalMonthlyListeners.toDouble(), 
+                              )
+                            ]),
+                        BarChartGroupData(
+                            x: 1,
+                            showingTooltipIndicators: [
+                              0
+                            ], // Siempre mostrar tooltip
+                            barRods: [
+                              BarChartRodData(
+                                toY: () {
+                                  // Calcular oyentes únicos
+                                  Set<String> monthlyUniqueListeners = {};
+                                  for (final record in currentMonthRecords) {
+                                    for (final attendeeId
+                                        in record.attendedAttendeeIds) {
+                                      final attendee = attendees.firstWhere(
+                                        (a) => a.id == attendeeId,
+                                        orElse: () => AttendeeModel(
+                                            id: '',
+                                            type: '',
+                                            sectorId: '',
+                                            createdAt: DateTime.now(),
+                                            createdByUserId: ''),
+                                      );
+                                      if (attendee.type == 'listener') {
+                                        monthlyUniqueListeners.add(attendeeId);
+                                      }
+                                    }
+                                  }
+                                  return monthlyUniqueListeners.length
+                                      .toDouble();
+                                }(),
                                 color: Colors.orange.shade600,
                                 width: 35,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(4),
                                   topRight: Radius.circular(4),
                                 ),
-                              )]
-                            ),
-                            BarChartGroupData(
-                              x: 2, 
-                              showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                              barRods: [BarChartRodData(
-                                toY: totalMonthlyVisitors.toDouble(), 
+                              )
+                            ]),
+                        BarChartGroupData(
+                            x: 2,
+                            showingTooltipIndicators: [
+                              0
+                            ], // Siempre mostrar tooltip
+                            barRods: [
+                              BarChartRodData(
+                                toY: () {
+                                  // Calcular visitas totales (se mantienen igual)
+                                  int totalMonthlyVisitors = 0;
+                                  for (final record in currentMonthRecords) {
+                                    totalMonthlyVisitors += record.visitorCount;
+                                  }
+                                  return totalMonthlyVisitors.toDouble();
+                                }(),
                                 color: Colors.green.shade600,
                                 width: 35,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(4),
                                   topRight: Radius.circular(4),
                                 ),
-                              )]
-                            ),
+                              )
+                            ]),
                       ],
                     ),
                   ),
@@ -1340,29 +1616,37 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                 // Calcular total semanal para el subtítulo
                 Builder(
                   builder: (context) {
-                    int totalSemanal = 0;
+                    // Calcular asistentes únicos totales para la semana
+                    Set<String> weeklyUniqueAttendees = {};
+                    int totalVisitors = 0;
                     for (final record in currentWeekRecordsFiltered) {
-                      totalSemanal += record.attendedAttendeeIds.length + record.visitorCount;
+                      weeklyUniqueAttendees.addAll(record.attendedAttendeeIds);
+                      totalVisitors += record.visitorCount;
                     }
-                    
+                    int totalSemanal =
+                        weeklyUniqueAttendees.length + totalVisitors;
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Asistencia Semanal por Rutas',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          'Asistentes Únicos y Visitas por Rutas',
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Semana: $currentWeek, total: $totalSemanal',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          'Semana: $currentWeek - ${weeklyUniqueAttendees.length} asistentes únicos + $totalVisitors visitas = $totalSemanal total',
+                          style:
+                              const TextStyle(fontSize: 16, color: Colors.grey),
                         ),
                       ],
                     );
                   },
                 ),
                 const SizedBox(height: 16),
-                _WeeklyRouteAttendanceChart(records: currentWeekRecordsFiltered),
+                _WeeklyRouteAttendanceChart(
+                    records: currentWeekRecordsFiltered),
                 const SizedBox(height: 32),
                 _ComunaSectorAttendanceChart(
                   records: currentWeekRecordsFiltered,
@@ -1384,7 +1668,7 @@ class _ComunaSectorAttendanceChart extends StatefulWidget {
   final List<AttendanceRecordModel> records;
   final int currentWeek;
   final int currentYear;
-  
+
   const _ComunaSectorAttendanceChart({
     required this.records,
     required this.currentWeek,
@@ -1392,10 +1676,12 @@ class _ComunaSectorAttendanceChart extends StatefulWidget {
   });
 
   @override
-  State<_ComunaSectorAttendanceChart> createState() => _ComunaSectorAttendanceChartState();
+  State<_ComunaSectorAttendanceChart> createState() =>
+      _ComunaSectorAttendanceChartState();
 }
 
-class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceChart> {
+class _ComunaSectorAttendanceChartState
+    extends State<_ComunaSectorAttendanceChart> {
   String? selectedCityId;
   String? selectedCommuneId;
 
@@ -1409,7 +1695,7 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
 
   void _initializeDefaultSelections() {
     final locationProvider = context.read<LocationProvider>();
-    
+
     // Seleccionar la primera ciudad por defecto si no hay selección
     if (locationProvider.cities.isNotEmpty && selectedCityId == null) {
       setState(() {
@@ -1423,14 +1709,15 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
     if (selectedCityId == null) return;
 
     final locationProvider = context.read<LocationProvider>();
-    
+
     // Cargar todas las rutas
     final allCommunes = await locationProvider.loadAllCommunes();
     locationProvider.setCommunes = allCommunes;
-    
+
     // Filtrar rutas por ciudad seleccionada
-    final cityCommunes = allCommunes.where((c) => c.cityId == selectedCityId).toList();
-    
+    final cityCommunes =
+        allCommunes.where((c) => c.cityId == selectedCityId).toList();
+
     // Cargar locaciones para las rutas de la ciudad seleccionada
     final allLocations = await locationProvider.loadAllLocations(cityCommunes);
     locationProvider.setLocations = allLocations;
@@ -1440,7 +1727,7 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
       final communesWithSectors = cityCommunes
           .where((c) => allLocations.any((l) => l.communeId == c.id))
           .toList();
-      
+
       if (communesWithSectors.isNotEmpty && mounted) {
         setState(() {
           selectedCommuneId = communesWithSectors.first.id;
@@ -1457,18 +1744,22 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
     final locations = locationProvider.locations;
 
     // Filtrar rutas por ciudad seleccionada
-    final filteredCommunes = communes.where((c) => c.cityId == selectedCityId).toList();
+    final filteredCommunes =
+        communes.where((c) => c.cityId == selectedCityId).toList();
     final communesWithSectors = filteredCommunes
         .where((c) => locations.any((l) => l.communeId == c.id))
         .toList();
 
     // Validar que selectedCityId existe en las ciudades disponibles
-    if (selectedCityId != null && !cities.any((city) => city.id == selectedCityId)) {
+    if (selectedCityId != null &&
+        !cities.any((city) => city.id == selectedCityId)) {
       selectedCityId = null;
     }
 
     // Validar que selectedCommuneId existe en las comunas disponibles
-    if (selectedCommuneId != null && !communesWithSectors.any((commune) => commune.id == selectedCommuneId)) {
+    if (selectedCommuneId != null &&
+        !communesWithSectors
+            .any((commune) => commune.id == selectedCommuneId)) {
       selectedCommuneId = null;
     }
 
@@ -1477,36 +1768,50 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
         ? locations.where((l) => l.communeId == selectedCommuneId).toList()
         : [];
 
-    // Calcular asistencia por sector (solo semana actual)
+    // Calcular asistentes únicos por sector (solo semana actual)
     final Map<String, int> sectorAttendance = {};
-    
+    final Map<String, Set<String>> sectorUniqueAttendees = {};
+    final Map<String, int> sectorVisitors = {};
+
     // Inicializar TODOS los sectores con 0 (para mostrar incluso sectores sin asistencias)
     for (final sector in sectors) {
       sectorAttendance[sector.name] = 0;
+      sectorUniqueAttendees[sector.name] = {};
+      sectorVisitors[sector.name] = 0;
     }
-    
-    // Sumar asistencias reales
+
+    // Calcular asistentes únicos y visitas por sector
     for (final sector in sectors) {
-      final sectorRecords = widget.records.where((r) => r.sectorId == sector.id);
-      int total = 0;
+      final sectorRecords =
+          widget.records.where((r) => r.sectorId == sector.id);
+
       for (final record in sectorRecords) {
-        total += record.attendedAttendeeIds.length + record.visitorCount;
+        // Agregar asistentes únicos
+        sectorUniqueAttendees[sector.name]!.addAll(record.attendedAttendeeIds);
+        // Sumar visitas (se mantienen como total)
+        sectorVisitors[sector.name] =
+            (sectorVisitors[sector.name] ?? 0) + record.visitorCount;
       }
-      sectorAttendance[sector.name] = total;
+
+      // Calcular total por sector (asistentes únicos + visitas totales)
+      final uniqueCount = sectorUniqueAttendees[sector.name]?.length ?? 0;
+      final visitorCount = sectorVisitors[sector.name] ?? 0;
+      sectorAttendance[sector.name] = uniqueCount + visitorCount;
     }
 
     // Calcular total semanal para el título
-    final int totalSemanal = sectorAttendance.values.fold(0, (sum, value) => sum + value);
+    final int totalSemanal =
+        sectorAttendance.values.fold(0, (sum, value) => sum + value);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      children: [
         Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-        const Text(
-          'Asistencia Total por Sector',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            const Text(
+              'Asistentes Únicos por Sector',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1523,10 +1828,12 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
             labelText: 'Selecciona una Ciudad',
             border: OutlineInputBorder(),
           ),
-          items: cities.map((city) => DropdownMenuItem(
-            value: city.id,
-            child: Text(city.name),
-          )).toList(),
+          items: cities
+              .map((city) => DropdownMenuItem(
+                    value: city.id,
+                    child: Text(city.name),
+                  ))
+              .toList(),
           onChanged: (value) async {
             setState(() {
               selectedCityId = value;
@@ -1546,10 +1853,12 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
               labelText: 'Selecciona una Ruta',
               border: OutlineInputBorder(),
             ),
-            items: communesWithSectors.map((commune) => DropdownMenuItem(
-              value: commune.id,
-              child: Text(commune.name),
-            )).toList(),
+            items: communesWithSectors
+                .map((commune) => DropdownMenuItem(
+                      value: commune.id,
+                      child: Text(commune.name),
+                    ))
+                .toList(),
             onChanged: (value) {
               setState(() {
                 selectedCommuneId = value;
@@ -1563,112 +1872,188 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
         ],
         // Gráfico de barras
         if (selectedCommuneId != null && sectorAttendance.isNotEmpty) ...[
-          Container(
-            height: 290, // Altura aumentada para acomodar tooltips
-            padding: const EdgeInsets.only(top: 25, bottom: 15, left: 12, right: 12), // Padding interno
-            child: Builder(
-              builder: (context) {
-                final entries = sectorAttendance.entries.toList();
-                final hasValidData = entries.isNotEmpty;
-                
-                return BarChart(
-              BarChartData(
-                    alignment: BarChartAlignment.spaceEvenly,
-                                // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
-                maxY: () {
-                  final values = sectorAttendance.values.toList();
-                  if (values.isEmpty || values.every((v) => v == 0)) {
-                    return 10.0; // Valor por defecto si no hay datos
-                  }
-                  final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
-                  return maxValue * 1.15; // 15% de margen, escalado dinámicamente
-                }(),
-                    barTouchData: BarTouchData(
-                      enabled: false, // Tooltips siempre visibles
-                      touchTooltipData: BarTouchTooltipData(
-                        tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
-                        tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
-                        tooltipRoundedRadius: 4,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        tooltipMargin: 8,
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final index = group.x.toInt();
-                          
-                          if (!hasValidData || index < 0 || index >= entries.length) {
-                            return null;
-                          }
-                          
-                          final value = entries[index].value;
-                          return BarTooltipItem(
-                            '$value',
-                            TextStyle(
-                              color: Colors.purple.shade700,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          );
-                        },
+          // Preparar datos para barras apiladas
+          Builder(
+            builder: (context) {
+              final entries = sectorAttendance.entries.toList();
+              final hasValidData = entries.isNotEmpty;
+              // Preparar datos para barras apiladas
+              final List<Map<String, dynamic>> sectorData =
+                  entries.map((entry) {
+                final name = entry.key;
+                final unique = sectorUniqueAttendees[name]?.length ?? 0;
+                final visitors = sectorVisitors[name] ?? 0;
+                return {
+                  'name': name,
+                  'unique': unique,
+                  'visitors': visitors,
+                  'total': unique + visitors,
+                };
+              }).toList();
+              final maxValue =
+                  sectorData.isNotEmpty && sectorData.any((d) => d['total'] > 0)
+                      ? sectorData
+                          .map((d) => d['total'] as int)
+                          .reduce((a, b) => a > b ? a : b)
+                      : 0;
+              if (sectorData.isEmpty) {
+                return const Center(
+                    child: Text('No hay sectores configurados'));
+              }
+              return Container(
+                height: 320,
+                padding: const EdgeInsets.only(
+                    top: 25, bottom: 15, left: 12, right: 12),
+                child: Column(
+                  children: [
+                    // Leyenda
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                              width: 12,
+                              height: 12,
+                              color: Colors.blue.shade600),
+                          const SizedBox(width: 4),
+                          const Text('Asistentes únicos',
+                              style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 16),
+                          Container(
+                              width: 12,
+                              height: 12,
+                              color: Colors.green.shade600),
+                          const SizedBox(width: 4),
+                          const Text('Visitas', style: TextStyle(fontSize: 12)),
+                        ],
                       ),
                     ),
-                    barGroups: entries
-                    .asMap()
-                    .entries
-                    .map((entry) => BarChartGroupData(
-                          x: entry.key,
-                              showingTooltipIndicators: hasValidData ? [0] : [], // Siempre mostrar tooltip
-                              barRods: [BarChartRodData(
-                                toY: entry.value.value.toDouble(), 
-                                color: Colors.purple.shade600,
-                                width: 35,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(4),
-                                  topRight: Radius.circular(4),
-                                ),
-                              )],
-                        ))
-                    .toList(),
-                titlesData: FlTitlesData(
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                          reservedSize: 60,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                            
-                            if (!hasValidData || index < 0 || index >= entries.length) {
-                              return const SizedBox.shrink();
-                            }
-                            
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Transform.rotate(
-                                angle: -0.5,
-                          child: Text(
-                                  entries[index].key,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                    // Gráfico
+                    Expanded(
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceEvenly,
+                          maxY:
+                              maxValue > 0 ? (maxValue.toDouble() * 1.15) : 10,
+                          barTouchData: BarTouchData(
+                            enabled: false,
+                            touchTooltipData: BarTouchTooltipData(
+                              tooltipBgColor: Colors.white.withOpacity(0.9),
+                              tooltipBorder: BorderSide(
+                                  color: Colors.grey.shade300, width: 1),
+                              tooltipRoundedRadius: 4,
+                              tooltipPadding: const EdgeInsets.symmetric(
+                                  horizontal: 3, vertical: 2),
+                              tooltipMargin: 8,
+                              getTooltipItem:
+                                  (group, groupIndex, rod, rodIndex) {
+                                final index = group.x.toInt();
+                                if (index < 0 || index >= sectorData.length) {
+                                  return null;
+                                }
+                                final data = sectorData[index];
+                                final unique = data['unique'] as int;
+                                final visitors = data['visitors'] as int;
+                                String tooltipText = '';
+                                Color tooltipColor = Colors.black;
+                                if (rodIndex == 0) {
+                                  tooltipText = '$unique';
+                                  tooltipColor = Colors.blue.shade700;
+                                } else if (rodIndex == 1) {
+                                  tooltipText = '$visitors';
+                                  tooltipColor = Colors.green.shade700;
+                                }
+                                return BarTooltipItem(
+                                  tooltipText,
+                                  TextStyle(
+                                    color: tooltipColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
                                   ),
-                            overflow: TextOverflow.ellipsis,
-                                ),
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
+                          titlesData: FlTitlesData(
+                            leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 60,
+                                getTitlesWidget: (value, meta) {
+                                  final index = value.toInt();
+                                  if (index < 0 || index >= sectorData.length) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  final sectorName =
+                                      sectorData[index]['name'] as String;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Transform.rotate(
+                                      angle: -0.5,
+                                      child: Text(
+                                        sectorName,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: sectorData.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final data = entry.value;
+                            final unique = data['unique'] as int;
+                            final visitors = data['visitors'] as int;
+                            return BarChartGroupData(
+                              x: index,
+                              showingTooltipIndicators: [0, 1],
+                              barRods: [
+                                BarChartRodData(
+                                  toY: unique.toDouble(),
+                                  color: Colors.blue.shade600,
+                                  width: 12,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(4),
+                                    topRight: Radius.circular(4),
+                                  ),
+                                ),
+                                BarChartRodData(
+                                  toY: (unique + visitors).toDouble(),
+                                  color: Colors.green.shade600,
+                                  width: 12,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(4),
+                                    topRight: Radius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ),
-                  ),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ],
                 ),
-                borderData: FlBorderData(show: false),
-              ),
-                );
-              },
-            ),
+              );
+            },
           ),
         ] else if (selectedCommuneId != null) ...[
           const Center(
-            child: Text('No hay datos de asistencia para los sectores de esta ruta.'),
+            child: Text(
+                'No hay datos de asistencia para los sectores de esta ruta.'),
           ),
         ],
       ],
@@ -1679,7 +2064,7 @@ class _ComunaSectorAttendanceChartState extends State<_ComunaSectorAttendanceCha
 // --- NUEVO WIDGET: _WeeklyRouteAttendanceChart ---
 class _WeeklyRouteAttendanceChart extends StatelessWidget {
   final List<AttendanceRecordModel> records;
-  
+
   const _WeeklyRouteAttendanceChart({required this.records});
 
   @override
@@ -1702,7 +2087,16 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
       communeNames[commune.id] = commune.name;
     }
 
-    // Calcular asistencias por comuna
+    // Calcular asistentes únicos y visitas por comuna
+    final Map<String, Set<String>> communeUniqueAttendees = {};
+    final Map<String, int> communeVisitors = {};
+
+    // Inicializar sets para cada comuna
+    for (final commune in communes) {
+      communeUniqueAttendees[commune.id] = {};
+      communeVisitors[commune.id] = 0;
+    }
+
     for (final record in records) {
       // Buscar la comuna del sector
       final location = locations.firstWhere(
@@ -1717,114 +2111,199 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
           updatedAt: DateTime.now(),
         ),
       );
-      
-      if (location.communeId.isNotEmpty && communeAttendance.containsKey(location.communeId)) {
-        communeAttendance[location.communeId] = 
-            (communeAttendance[location.communeId] ?? 0) + 
-            record.attendedAttendeeIds.length + 
-            record.visitorCount;
+
+      if (location.communeId.isNotEmpty &&
+          communeUniqueAttendees.containsKey(location.communeId)) {
+        // Agregar asistentes únicos
+        communeUniqueAttendees[location.communeId]!
+            .addAll(record.attendedAttendeeIds);
+        // Sumar visitas (se mantienen como total)
+        communeVisitors[location.communeId] =
+            (communeVisitors[location.communeId] ?? 0) + record.visitorCount;
       }
     }
 
-    // Mostrar TODAS las comunas (incluso con 0 asistencias)
-    final allCommuneEntries = communeAttendance.entries.toList();
+    // Preparar datos para barras apiladas
+    final List<Map<String, dynamic>> communeData = [];
+    for (final commune in communes) {
+      final uniqueCount = communeUniqueAttendees[commune.id]?.length ?? 0;
+      final visitorCount = communeVisitors[commune.id] ?? 0;
+      communeData.add({
+        'name': commune.name,
+        'unique': uniqueCount,
+        'visitors': visitorCount,
+        'total': uniqueCount + visitorCount,
+      });
+    }
 
-    if (allCommuneEntries.isEmpty) {
+    if (communeData.isEmpty) {
       return const Center(child: Text('No hay rutas configuradas'));
     }
 
-    // Preparar datos para el gráfico
-    final values = allCommuneEntries.map((e) => e.value).toList();
-    final maxValue = values.isNotEmpty && values.any((v) => v > 0)
-        ? values.reduce((a, b) => a > b ? a : b)
-        : 0;
+    // Calcular máximo valor para escalado
+    final maxValue =
+        communeData.isNotEmpty && communeData.any((d) => d['total'] > 0)
+            ? communeData
+                .map((d) => d['total'] as int)
+                .reduce((a, b) => a > b ? a : b)
+            : 0;
 
     return Container(
-      height: 280, // Altura controlada
-      padding: const EdgeInsets.only(top: 25, bottom: 15, left: 12, right: 12), // Padding interno
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceEvenly,
-          // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
-          maxY: maxValue > 0 ? (maxValue.toDouble() * 1.15) : 10,
-          barTouchData: BarTouchData(
-            enabled: false, // Tooltips siempre visibles
-            touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
-              tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
-              tooltipRoundedRadius: 4,
-              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              tooltipMargin: 8,
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final communeId = allCommuneEntries[group.x.toInt()].key;
-                final value = communeAttendance[communeId] ?? 0;
-                return BarTooltipItem(
-                  '$value',
-                  TextStyle(
-                    color: Colors.purple.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                );
-              },
+      height: 320, // Altura aumentada para acomodar leyenda
+      padding: const EdgeInsets.only(
+          top: 25, bottom: 15, left: 12, right: 12), // Padding interno
+      child: Column(
+        children: [
+          // Leyenda
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18), // Más separación
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  color: Colors.blue.shade600,
+                ),
+                const SizedBox(width: 4),
+                const Text('Asistentes únicos', style: TextStyle(fontSize: 12)),
+                const SizedBox(width: 16),
+                Container(
+                  width: 12,
+                  height: 12,
+                  color: Colors.green.shade600,
+                ),
+                const SizedBox(width: 4),
+                const Text('Visitas', style: TextStyle(fontSize: 12)),
+              ],
             ),
           ),
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 60,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= allCommuneEntries.length) {
-                  return const SizedBox.shrink();
-                }
-                final communeId = allCommuneEntries[index].key;
-                final communeName = communeNames[communeId] ?? 'Ruta $index';
-                
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Transform.rotate(
-                    angle: -0.5, // Títulos ladeados
-                    child: Text(
-                      communeName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+          // Gráfico
+          Expanded(
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceEvenly,
+                maxY: maxValue > 0 ? (maxValue.toDouble() * 1.15) : 10,
+                barTouchData: BarTouchData(
+                  enabled: false, // Tooltips siempre visibles
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.white.withOpacity(0.9),
+                    tooltipBorder:
+                        BorderSide(color: Colors.grey.shade300, width: 1),
+                    tooltipRoundedRadius: 4,
+                    tooltipPadding:
+                        const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                    tooltipMargin: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final index = group.x.toInt();
+                      if (index < 0 || index >= communeData.length) {
+                        return null;
+                      }
+                      final data = communeData[index];
+                      final unique = data['unique'] as int;
+                      final visitors = data['visitors'] as int;
+
+                      String tooltipText = '';
+                      Color tooltipColor = Colors.black;
+
+                      if (rodIndex == 0) {
+                        tooltipText = '$unique';
+                        tooltipColor = Colors.blue.shade700;
+                      } else if (rodIndex == 1) {
+                        tooltipText = '$visitors';
+                        tooltipColor = Colors.green.shade700;
+                      }
+
+                      return BarTooltipItem(
+                        tooltipText,
+                        TextStyle(
+                          color: tooltipColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 60,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= communeData.length) {
+                          return const SizedBox.shrink();
+                        }
+                        final communeName =
+                            communeData[index]['name'] as String;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Transform.rotate(
+                            angle: -0.5,
+                            child: Text(
+                              communeName,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                );
-              },
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: communeData.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final data = entry.value;
+                  final unique = data['unique'] as int;
+                  final visitors = data['visitors'] as int;
+
+                  return BarChartGroupData(
+                    x: index,
+                    showingTooltipIndicators: [
+                      0,
+                      1
+                    ], // Tooltips siempre visibles
+                    barRods: [
+                      // Barra de asistentes únicos (base)
+                      BarChartRodData(
+                        toY: unique.toDouble(),
+                        color: Colors.blue.shade600,
+                        width: 12, // Más delgada
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                      // Barra de visitas (apilada)
+                      BarChartRodData(
+                        toY: (unique + visitors).toDouble(),
+                        color: Colors.green.shade600,
+                        width: 12, // Más delgada
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: allCommuneEntries.asMap().entries.map((entry) {
-          final index = entry.key;
-          final communeData = entry.value;
-          return BarChartGroupData(
-            x: index,
-            showingTooltipIndicators: [0], // Siempre mostrar tooltip
-            barRods: [
-              BarChartRodData(
-                toY: communeData.value.toDouble(),
-                color: Colors.purple.shade600, // Barras púrpuras
-                width: 30,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(4),
-                ),
-              )
-            ],
-          );
-        }).toList(),
+        ],
       ),
-    ),
     );
   }
-} 
+}

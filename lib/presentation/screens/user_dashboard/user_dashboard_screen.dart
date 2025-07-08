@@ -30,7 +30,8 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
     // 0: Contenido del Tab de Inicio (Dashboard actual)
     const _HomeDashboardContent(),
     // 1: Contenido del Tab de Eventos (para visualizar eventos creados por admin)
-    const AdminEventsTab(isAdminView: false), // Reutilizar AdminEventsTab para vista de usuario
+    const AdminEventsTab(
+        isAdminView: false), // Reutilizar AdminEventsTab para vista de usuario
     // 2: Contenido del Tab de Ingresar Asistencias
     const RecordAttendanceScreen(), // La nueva pantalla para ingresar asistencias
     // 3: Contenido del Tab de Asistentes (Gestión de asistentes)
@@ -61,201 +62,208 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           title: const Text('Cuenta Pendiente'),
         ),
         body: const Center(
-          child: Text('Tu cuenta está pendiente de aprobación por el administrador.'),
+          child: Text(
+              'Tu cuenta está pendiente de aprobación por el administrador.'),
         ),
       );
     }
 
     return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (didPop) {
-          return;
-        }
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Confirmar Salida'),
-            content: const Text('¿Estás seguro de que quieres salir de la aplicación?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () {
-                   Navigator.of(context).pop(true);
-                },
-                child: const Text('Salir'),
-              ),
-            ],
-          ),
-        ).then((exit) {
-          if (exit ?? false) {
-             // Minimiza la app usando el método nativo de Flutter
-             SystemNavigator.pop();
+        canPop: false,
+        onPopInvoked: (didPop) {
+          if (didPop) {
+            return;
           }
-        });
-      },
-      child: Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const AppLogo(width: 30, height: 30),
-            const SizedBox(width: 10),
-            const Text('IBBN Asistencia'),
-          ],
-        ),
-        centerTitle: true,
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu), // Icono de hamburguesa
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
-          },
-        ),
-        actions: const [
-          // Este botón de cerrar sesión ahora está en el Drawer, lo podemos quitar de aquí si quieres
-          // IconButton(
-          //   icon: const Icon(Icons.logout),
-          //   onPressed: () async {
-          //     await userProvider.signOut();
-          //   },
-          // ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundImage: user.photoUrl != null
-                        ? NetworkImage(user.photoUrl!)
-                        : null,
-                    child: user.photoUrl == null
-                        ? Text(user.displayName[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 24, color: Colors.white))
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    user.displayName,
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                  Text(
-                    user.email,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Confirmar Salida'),
+              content: const Text(
+                  '¿Estás seguro de que quieres salir de la aplicación?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(true);
+                  },
+                  child: const Text('Salir'),
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Perfil'),
-              onTap: () {
-                Navigator.pop(context);
-                // Navega a la pantalla de Perfil - ahora el índice de Perfil es 4, pero no está en la BottomBar
-                // Lo ideal sería que el Drawer tenga su propia navegación a ProfileScreen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              },
+          ).then((exit) {
+            if (exit ?? false) {
+              // Minimiza la app usando el método nativo de Flutter
+              SystemNavigator.pop();
+            }
+          });
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                const AppLogo(width: 30, height: 30),
+                const SizedBox(width: 10),
+                const Text('IBBN Asistencia'),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text('Acerca de'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Cerrar Sesión'),
-              onTap: () async {
-                // Cierra el drawer
-                Navigator.pop(context);
-
-                // Muestra un diálogo de carga
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const Dialog(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(width: 20),
-                            Text("Cerrando sesión..."),
-                          ],
-                        ),
-                      ),
-                    );
+            centerTitle: true,
+            leading: Builder(
+              builder: (BuildContext context) {
+                return IconButton(
+                  icon: const Icon(Icons.menu), // Icono de hamburguesa
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer();
                   },
                 );
-
-                // Espera 2 segundos para la animación
-                await Future.delayed(const Duration(seconds: 2));
-
-                // Cierra el diálogo antes de desloguear
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-                
-                // Ejecuta el cierre de sesión
-                await userProvider.signOut();
               },
             ),
-          ],
-        ),
-      ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Inicio',
+            actions: const [
+              // Este botón de cerrar sesión ahora está en el Drawer, lo podemos quitar de aquí si quieres
+              // IconButton(
+              //   icon: const Icon(Icons.logout),
+              //   onPressed: () async {
+              //     await userProvider.signOut();
+              //   },
+              // ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Eventos',
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
+                        child: user.photoUrl == null
+                            ? Text(user.displayName[0].toUpperCase(),
+                                style: const TextStyle(
+                                    fontSize: 24, color: Colors.white))
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        user.displayName,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                      Text(
+                        user.email,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('Perfil'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Navega a la pantalla de Perfil - ahora el índice de Perfil es 4, pero no está en la BottomBar
+                    // Lo ideal sería que el Drawer tenga su propia navegación a ProfileScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ProfileScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info),
+                  title: const Text('Acerca de'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Cerrar Sesión'),
+                  onTap: () async {
+                    // Cierra el drawer
+                    Navigator.pop(context);
+
+                    // Muestra un diálogo de carga
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const Dialog(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(width: 20),
+                                Text("Cerrando sesión..."),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+
+                    // Espera 2 segundos para la animación
+                    await Future.delayed(const Duration(seconds: 2));
+
+                    // Cierra el diálogo antes de desloguear
+                    if (mounted) {
+                      Navigator.pop(context);
+                    }
+
+                    // Ejecuta el cierre de sesión
+                    await userProvider.signOut();
+                  },
+                ),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Ingresar Asistencias',
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: _widgetOptions,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Asistentes',
+          bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.event),
+                label: 'Eventos',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment),
+                label: 'Ingresar Asistencias',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group),
+                label: 'Asistentes',
+              ),
+              // Eliminado: BottomNavigationBarItem para Perfil
+            ],
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
           ),
-          // Eliminado: BottomNavigationBarItem para Perfil
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
-    ));
+        ));
   }
 }
 
@@ -284,23 +292,34 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
   }
 
   Future<void> _fetchSectorName(String sectorId) async {
-    setState(() { _loadingSectorName = true; });
+    setState(() {
+      _loadingSectorName = true;
+    });
     try {
-      final doc = await FirebaseFirestore.instance.collection('locations').doc(sectorId).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('locations')
+          .doc(sectorId)
+          .get();
       if (doc.exists && mounted) {
         setState(() {
           _sectorName = doc.data()!["name"] ?? sectorId;
         });
       } else if (mounted) {
-        setState(() { _sectorName = sectorId; });
+        setState(() {
+          _sectorName = sectorId;
+        });
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _sectorName = sectorId; });
+        setState(() {
+          _sectorName = sectorId;
+        });
       }
     } finally {
       if (mounted) {
-        setState(() { _loadingSectorName = false; });
+        setState(() {
+          _loadingSectorName = false;
+        });
       }
     }
   }
@@ -315,92 +334,186 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
 
     return StreamBuilder<List<AttendanceRecordModel>>(
       stream: user.sectorId != null
-          ? attendanceRecordService.getAttendanceRecordsStreamBySector(user.sectorId!)
+          ? attendanceRecordService
+              .getAttendanceRecordsStreamBySector(user.sectorId!)
           : const Stream.empty(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final records = snapshot.data!;
-        
+
         // Calcular semana actual y anterior
         final now = DateTime.now();
         final currentWeek = getWeekNumber(now);
         final previousWeek = currentWeek - 1;
         final currentYear = now.year;
-        
+
         // Filtrar registros por semanas
-        final currentWeekRecords = records.where((r) => r.weekNumber == currentWeek && r.year == currentYear).toList();
-        final previousWeekRecords = records.where((r) => r.weekNumber == previousWeek && r.year == currentYear).toList();
-        
-        // Calcular asistencia semanal
-        final currentWeekAttendance = currentWeekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-        final previousWeekAttendance = previousWeekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-        
+        final currentWeekRecords = records
+            .where((r) => r.weekNumber == currentWeek && r.year == currentYear)
+            .toList();
+        final previousWeekRecords = records
+            .where((r) => r.weekNumber == previousWeek && r.year == currentYear)
+            .toList();
+
+        // Calcular asistentes únicos semanales
+        Set<String> currentWeekUniqueAttendees = {};
+        for (final record in currentWeekRecords) {
+          currentWeekUniqueAttendees.addAll(record.attendedAttendeeIds);
+        }
+        final currentWeekUniqueAttendance = currentWeekUniqueAttendees.length;
+
+        Set<String> previousWeekUniqueAttendees = {};
+        for (final record in previousWeekRecords) {
+          previousWeekUniqueAttendees.addAll(record.attendedAttendeeIds);
+        }
+        final previousWeekUniqueAttendance = previousWeekUniqueAttendees.length;
+
         // Calcular promedio de la semana actual (solo días con reuniones)
-        final daysWithMeetings = currentWeekRecords.map((r) => r.date.weekday).toSet().length;
-        final weeklyAverage = daysWithMeetings > 0 ? (currentWeekAttendance / daysWithMeetings).round() : 0;
-        
+        final daysWithMeetings =
+            currentWeekRecords.map((r) => r.date.weekday).toSet().length;
+        final weeklyAverage = daysWithMeetings > 0
+            ? (currentWeekUniqueAttendance / daysWithMeetings).round()
+            : 0;
+
         // Calcular TTL por días específicos de la semana actual
         final ttlMiercoles = currentWeekRecords
             .where((r) => r.date.weekday == DateTime.wednesday)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
         final ttlSabados = currentWeekRecords
             .where((r) => r.date.weekday == DateTime.saturday)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
         final ttlDomingoAM = currentWeekRecords
             .where((r) => r.date.weekday == DateTime.sunday && r.date.hour < 14)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
-            
-        final ttlDomingoPM = currentWeekRecords
-            .where((r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
-            .fold(0, (sum, r) => sum + r.attendedAttendeeIds.length + r.visitorCount);
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
 
-        // Calcular TTL semanal por tipo (miembros, oyentes, visitas)
-        int weeklyMembers = 0;
-        int weeklyListeners = 0;
+        final ttlDomingoPM = currentWeekRecords
+            .where(
+                (r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
+            .fold(
+                0,
+                (sum, r) =>
+                    sum + r.attendedAttendeeIds.length + r.visitorCount);
+
+        // Calcular TTL semanal por tipo (miembros, oyentes, visitas) ÚNICOS
+        Set<String> uniqueMemberIds = {};
+        Set<String> uniqueListenerIds = {};
         int weeklyVisitors = 0;
-        
         for (final record in currentWeekRecords) {
-          // Contar visitas directas
           weeklyVisitors += record.visitorCount;
-          
-          // Contar miembros y oyentes por attendeeId
           for (final attendeeId in record.attendedAttendeeIds) {
             final attendee = attendees.firstWhere(
               (a) => a.id == attendeeId,
               orElse: () => AttendeeModel(
-                type: 'member', // Default fallback
+                type: 'member',
                 sectorId: user.sectorId!,
                 createdAt: DateTime.now(),
                 createdByUserId: user.uid,
               ),
             );
-            
             if (attendee.type == 'member') {
-              weeklyMembers++;
+              uniqueMemberIds.add(attendeeId);
             } else if (attendee.type == 'listener') {
-              weeklyListeners++;
+              uniqueListenerIds.add(attendeeId);
             }
           }
         }
-        
+        final weeklyMembers = uniqueMemberIds.length;
+        final weeklyListeners = uniqueListenerIds.length;
+
         // Calcular suma total para gráficos
         final totalByType = weeklyMembers + weeklyListeners + weeklyVisitors;
 
         // Filtrar registros del mes actual para el gráfico
-        final currentMonthRecords = records.where((r) => r.date.month == now.month && r.date.year == now.year).toList();
+        final currentMonthRecords = records
+            .where((r) => r.date.month == now.month && r.date.year == now.year)
+            .toList();
         Map<int, int> weekAttendance = {};
         for (final record in currentMonthRecords) {
           final week = record.weekNumber;
           final total = record.attendedAttendeeIds.length + record.visitorCount;
           weekAttendance[week] = (weekAttendance[week] ?? 0) + total;
         }
-        
+
+        // Calcular asistentes únicos mensuales por tipo
+        Set<String> monthlyUniqueMembers = {};
+        Set<String> monthlyUniqueListeners = {};
+        int monthlyVisitors = 0;
+        for (final record in currentMonthRecords) {
+          monthlyVisitors += record.visitorCount;
+          for (final attendeeId in record.attendedAttendeeIds) {
+            final attendee = attendees.firstWhere(
+              (a) => a.id == attendeeId,
+              orElse: () => AttendeeModel(
+                type: 'member',
+                sectorId: user.sectorId!,
+                createdAt: DateTime.now(),
+                createdByUserId: user.uid,
+              ),
+            );
+            if (attendee.type == 'member') {
+              monthlyUniqueMembers.add(attendeeId);
+            } else if (attendee.type == 'listener') {
+              monthlyUniqueListeners.add(attendeeId);
+            }
+          }
+        }
+        final monthlyUniqueTotal = monthlyUniqueMembers.length +
+            monthlyUniqueListeners.length +
+            monthlyVisitors;
+
         // Calcular suma total del mes
-        final monthlyTotal = weekAttendance.values.fold(0, (sum, value) => sum + value);
+        final monthlyTotal =
+            weekAttendance.values.fold(0, (sum, value) => sum + value);
+
+        // Ordenar las semanas de menor a mayor
+        final sortedWeekEntries = weekAttendance.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+
+        // Calcular suma de asistencias únicas por semana para miembros y oyentes
+        int monthlyMemberWeekSum = 0;
+        int monthlyListenerWeekSum = 0;
+        for (final weekEntry in sortedWeekEntries) {
+          final week = weekEntry.key;
+          final recordsSemana =
+              currentMonthRecords.where((r) => r.weekNumber == week).toList();
+          Set<String> uniqueMembers = {};
+          Set<String> uniqueListeners = {};
+          for (final record in recordsSemana) {
+            for (final attendeeId in record.attendedAttendeeIds) {
+              final attendee = attendees.firstWhere(
+                (a) => a.id == attendeeId,
+                orElse: () => AttendeeModel(
+                  type: 'member',
+                  sectorId: user.sectorId!,
+                  createdAt: DateTime.now(),
+                  createdByUserId: user.uid,
+                ),
+              );
+              if (attendee.type == 'member') {
+                uniqueMembers.add(attendeeId);
+              } else if (attendee.type == 'listener') {
+                uniqueListeners.add(attendeeId);
+              }
+            }
+          }
+          monthlyMemberWeekSum += uniqueMembers.length;
+          monthlyListenerWeekSum += uniqueListeners.length;
+        }
+
+        final barWidth = 18.0;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -408,12 +521,13 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _loadingSectorName 
-                    ? 'RESUMEN' 
-                    : _sectorName != null 
-                        ? 'RESUMEN ($_sectorName)' 
+                _loadingSectorName
+                    ? 'RESUMEN'
+                    : _sectorName != null
+                        ? 'RESUMEN ($_sectorName)'
                         : 'RESUMEN',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Row(
@@ -427,12 +541,13 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Asistencia Total - Semana $currentWeek',
-                              style: const TextStyle(fontSize: 16, color: Colors.grey),
+                              'Asistentes Únicos - Semana $currentWeek',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '$currentWeekAttendance',
+                              '$currentWeekUniqueAttendance',
                               style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -442,8 +557,7 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             Text(
                               'Promedio: $weeklyAverage',
                               style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600]),
+                                  fontSize: 14, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -460,15 +574,16 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Asistencia Semanal',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                              'Asistentes Únicos Semanales',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
                             ),
                             const SizedBox(height: 8),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Semana $currentWeek: $currentWeekAttendance',
+                                  'Semana $currentWeek: $currentWeekUniqueAttendance',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -476,31 +591,33 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Semana $previousWeek: $previousWeekAttendance',
+                                  'Semana $previousWeek: $previousWeekUniqueAttendance',
                                   style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600]),
+                                      fontSize: 14, color: Colors.grey[600]),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Text(
-                                      'Diferencia: ${currentWeekAttendance - previousWeekAttendance}',
+                                      'Diferencia: ${currentWeekUniqueAttendance - previousWeekUniqueAttendance}',
                                       style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
-                                          color: currentWeekAttendance >= previousWeekAttendance 
-                                              ? Colors.green 
+                                          color: currentWeekUniqueAttendance >=
+                                                  previousWeekUniqueAttendance
+                                              ? Colors.green
                                               : Colors.red),
                                     ),
                                     const SizedBox(width: 4),
                                     Icon(
-                                      currentWeekAttendance >= previousWeekAttendance 
-                                          ? Icons.trending_up 
+                                      currentWeekUniqueAttendance >=
+                                              previousWeekUniqueAttendance
+                                          ? Icons.trending_up
                                           : Icons.trending_down,
                                       size: 16,
-                                      color: currentWeekAttendance >= previousWeekAttendance 
-                                          ? Colors.green 
+                                      color: currentWeekUniqueAttendance >=
+                                              previousWeekUniqueAttendance
+                                          ? Colors.green
                                           : Colors.red,
                                     ),
                                   ],
@@ -533,7 +650,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL MIERC',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -559,7 +679,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL SABADO',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -585,7 +708,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL DOM AM',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -611,7 +737,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           children: [
                             const Text(
                               'TTL DOM PM',
-                              style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -636,46 +765,137 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Asistencia por Semana', style: TextStyle(fontWeight: FontWeight.bold)),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Asistencia por Semana',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           Text(
-                            'Total mensual: $monthlyTotal',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            'Total mensual único: $monthlyUniqueTotal',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
                           ),
                         ],
                       ),
+                      // Gráfico de barras apiladas con leyenda
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10, bottom: 18),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                                width: 12,
+                                height: 12,
+                                color: Colors.blue.shade600),
+                            const SizedBox(width: 4),
+                            Text('Miembros ($monthlyMemberWeekSum)',
+                                style: const TextStyle(fontSize: 12)),
+                            const SizedBox(width: 16),
+                            Container(
+                                width: 12,
+                                height: 12,
+                                color: Colors.orange.shade600),
+                            const SizedBox(width: 4),
+                            Text('Oyentes ($monthlyListenerWeekSum)',
+                                style: const TextStyle(fontSize: 12)),
+                            const SizedBox(width: 16),
+                            Container(
+                                width: 12,
+                                height: 12,
+                                color: Colors.green.shade600),
+                            const SizedBox(width: 4),
+                            Text('Visitas ($monthlyVisitors)',
+                                style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
                       Container(
-                        height: 240, // Altura aumentada para acomodar tooltips
-                        padding: const EdgeInsets.only(top: 20, bottom: 15, left: 12, right: 12), // Padding interno
-                        child: weekAttendance.isEmpty
-                            ? const Center(child: Text('No hay datos de asistencia para este mes.'))
+                        height: 220,
+                        padding: const EdgeInsets.only(
+                            top: 0, bottom: 15, left: 12, right: 12),
+                        child: sortedWeekEntries.isEmpty
+                            ? const Center(
+                                child: Text(
+                                    'No hay datos de asistencia para este mes.'))
                             : BarChart(
                                 BarChartData(
-                                  alignment: BarChartAlignment.spaceAround,
-                                  // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
+                                  alignment: BarChartAlignment.spaceEvenly,
                                   maxY: () {
-                                    final values = weekAttendance.values.toList();
-                                    if (values.isEmpty || values.every((v) => v == 0)) {
-                                      return 10.0; // Valor por defecto si no hay datos
+                                    final values = sortedWeekEntries
+                                        .map((e) => e.value)
+                                        .toList();
+                                    if (values.isEmpty ||
+                                        values.every((v) => v == 0)) {
+                                      return 10.0;
                                     }
-                                    final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
-                                    return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                                    final maxValue = values
+                                        .reduce((a, b) => a > b ? a : b)
+                                        .toDouble();
+                                    return maxValue * 1.15;
                                   }(),
                                   barTouchData: BarTouchData(
-                                    enabled: false, // Desactivado porque tooltips están siempre visibles
+                                    enabled: false,
                                     touchTooltipData: BarTouchTooltipData(
-                                      tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
-                                      tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                                      tooltipBgColor:
+                                          Colors.white.withOpacity(0.9),
+                                      tooltipBorder: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1),
                                       tooltipRoundedRadius: 4,
-                                      tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      tooltipPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 4),
                                       tooltipMargin: 8,
-                                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                        final value = weekAttendance[group.x.toInt()] ?? 0;
+                                      getTooltipItem:
+                                          (group, groupIndex, rod, rodIndex) {
+                                        final week = group.x.toInt();
+                                        final recordsSemana =
+                                            currentMonthRecords
+                                                .where(
+                                                    (r) => r.weekNumber == week)
+                                                .toList();
+                                        Set<String> uniqueMembers = {};
+                                        Set<String> uniqueListeners = {};
+                                        int visitors = 0;
+                                        for (final record in recordsSemana) {
+                                          for (final attendeeId
+                                              in record.attendedAttendeeIds) {
+                                            final attendee =
+                                                attendees.firstWhere(
+                                              (a) => a.id == attendeeId,
+                                              orElse: () => AttendeeModel(
+                                                type: 'member',
+                                                sectorId: user.sectorId!,
+                                                createdAt: DateTime.now(),
+                                                createdByUserId: user.uid,
+                                              ),
+                                            );
+                                            if (attendee.type == 'member') {
+                                              uniqueMembers.add(attendeeId);
+                                            } else if (attendee.type ==
+                                                'listener') {
+                                              uniqueListeners.add(attendeeId);
+                                            }
+                                          }
+                                          visitors += record.visitorCount;
+                                        }
+                                        String tooltipText = '';
+                                        Color tooltipColor = Colors.black;
+                                        if (rodIndex == 0) {
+                                          tooltipText =
+                                              '${uniqueMembers.length}';
+                                          tooltipColor = Colors.blue.shade700;
+                                        } else if (rodIndex == 1) {
+                                          tooltipText =
+                                              '${uniqueListeners.length}';
+                                          tooltipColor = Colors.orange.shade700;
+                                        } else if (rodIndex == 2) {
+                                          tooltipText = '$visitors';
+                                          tooltipColor = Colors.green.shade700;
+                                        }
                                         return BarTooltipItem(
-                                          '$value',
+                                          tooltipText,
                                           TextStyle(
-                                            color: Colors.blue.shade700,
+                                            color: tooltipColor,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
                                           ),
@@ -683,40 +903,107 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                       },
                                     ),
                                   ),
-                                  barGroups: weekAttendance.entries.map((e) => BarChartGroupData(
-                                    x: e.key, 
-                                    showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                                    barRods: [BarChartRodData(
-                                      toY: e.value.toDouble(), 
-                                      color: Colors.blue.shade600,
-                                      width: 35,
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(4),
-                                        topRight: Radius.circular(4),
-                                      ),
-                                    )]
-                                  )).toList(),
+                                  barGroups: sortedWeekEntries.map((e) {
+                                    final week = e.key;
+                                    final recordsSemana = currentMonthRecords
+                                        .where((r) => r.weekNumber == week)
+                                        .toList();
+                                    Set<String> uniqueMembers = {};
+                                    Set<String> uniqueListeners = {};
+                                    int visitors = 0;
+                                    for (final record in recordsSemana) {
+                                      for (final attendeeId
+                                          in record.attendedAttendeeIds) {
+                                        final attendee = attendees.firstWhere(
+                                          (a) => a.id == attendeeId,
+                                          orElse: () => AttendeeModel(
+                                            type: 'member',
+                                            sectorId: user.sectorId!,
+                                            createdAt: DateTime.now(),
+                                            createdByUserId: user.uid,
+                                          ),
+                                        );
+                                        if (attendee.type == 'member') {
+                                          uniqueMembers.add(attendeeId);
+                                        } else if (attendee.type ==
+                                            'listener') {
+                                          uniqueListeners.add(attendeeId);
+                                        }
+                                      }
+                                      visitors += record.visitorCount;
+                                    }
+                                    return BarChartGroupData(
+                                      x: week,
+                                      showingTooltipIndicators: [0, 1, 2],
+                                      barRods: [
+                                        BarChartRodData(
+                                          toY: uniqueMembers.length.toDouble(),
+                                          color: Colors.blue.shade600,
+                                          width: barWidth,
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4),
+                                          ),
+                                        ),
+                                        BarChartRodData(
+                                          toY:
+                                              uniqueListeners.length.toDouble(),
+                                          color: Colors.orange.shade600,
+                                          width: barWidth,
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4),
+                                          ),
+                                        ),
+                                        BarChartRodData(
+                                          toY: visitors.toDouble(),
+                                          color: Colors.green.shade600,
+                                          width: barWidth,
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
                                   titlesData: FlTitlesData(
-                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    leftTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false)),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
                                         reservedSize: 25,
                                         getTitlesWidget: (value, meta) => Text(
                                           'S${value.toInt()}',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500),
                                         ),
                                       ),
                                     ),
-                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                   ),
                                   borderData: FlBorderData(show: false),
                                   gridData: FlGridData(
                                     show: true,
                                     drawVerticalLine: false,
-                                    horizontalInterval: weekAttendance.values.isNotEmpty ? 
-                                        (weekAttendance.values.reduce((a, b) => a > b ? a : b).toDouble() / 4).ceilToDouble() : 5.0,
+                                    horizontalInterval: sortedWeekEntries
+                                            .isNotEmpty
+                                        ? (sortedWeekEntries
+                                                    .map((e) => e.value)
+                                                    .reduce(
+                                                        (a, b) => a > b ? a : b)
+                                                    .toDouble() /
+                                                4)
+                                            .ceilToDouble()
+                                        : 5.0,
                                     getDrawingHorizontalLine: (value) => FlLine(
                                       color: Colors.grey.shade300,
                                       strokeWidth: 0.5,
@@ -732,13 +1019,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
               const SizedBox(height: 24),
               // Nuevo gráfico TTL Semanal por Tipo
               Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
                     'TTL Semanal por Tipo - Semana $currentWeek',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                      Text(
+                  Text(
                     'Total: $totalByType',
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
@@ -747,27 +1035,33 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
               const SizedBox(height: 24), // Más espacio para el título
               Container(
                 height: 280, // Altura aumentada para acomodar tooltips
-                padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+                padding: const EdgeInsets.only(
+                    top: 30, bottom: 20, left: 16, right: 16),
                 child: BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceEvenly,
-                    // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
                     maxY: () {
-                      final values = [weeklyMembers, weeklyListeners, weeklyVisitors];
+                      final values = [
+                        weeklyMembers,
+                        weeklyListeners,
+                        weeklyVisitors
+                      ];
                       if (values.every((v) => v == 0)) {
-                        return 10.0; // Valor por defecto si no hay datos
+                        return 10.0;
                       }
-                      final maxValue = values.reduce((a, b) => a > b ? a : b).toDouble();
-                      return maxValue * 1.15; // 15% de margen, escalado dinámicamente
+                      final maxValue =
+                          values.reduce((a, b) => a > b ? a : b).toDouble();
+                      return maxValue * 1.15;
                     }(),
                     barTouchData: BarTouchData(
-                      enabled: false, // Desactivado porque tooltips están siempre visibles
+                      enabled: false,
                       touchTooltipData: BarTouchTooltipData(
-                        tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
-                        tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
+                        tooltipBgColor: Colors.white.withOpacity(0.9),
+                        tooltipBorder:
+                            BorderSide(color: Colors.grey.shade300, width: 1),
                         tooltipRoundedRadius: 4,
-                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        // Offset para posicionar tooltip justo encima de la barra
+                        tooltipPadding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
                         tooltipMargin: 8,
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           String value = '';
@@ -775,15 +1069,15 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           switch (group.x) {
                             case 0:
                               value = '$weeklyMembers';
-                              color = Colors.blue;
+                              color = Colors.blue.shade700;
                               break;
                             case 1:
                               value = '$weeklyListeners';
-                              color = Colors.green;
+                              color = Colors.orange.shade700;
                               break;
                             case 2:
                               value = '$weeklyVisitors';
-                              color = Colors.orange;
+                              color = Colors.green.shade700;
                               break;
                           }
                           return BarTooltipItem(
@@ -799,8 +1093,7 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                     ),
                     titlesData: FlTitlesData(
                       leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
+                          sideTitles: SideTitles(showTitles: false)),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
@@ -808,27 +1101,43 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                           getTitlesWidget: (value, meta) {
                             switch (value.toInt()) {
                               case 0:
-                                return const Text('Miembros', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                return const Text('Miembros',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500));
                               case 1:
-                                return const Text('Oyentes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                return const Text('Oyentes',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500));
                               case 2:
-                                return const Text('Visitas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500));
+                                return const Text('Visitas',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500));
                             }
                             return const Text('');
                           },
                         ),
                       ),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                     ),
                     borderData: FlBorderData(show: false),
                     gridData: FlGridData(
                       show: true,
                       drawVerticalLine: false,
                       horizontalInterval: () {
-                        final maxValue = [weeklyMembers, weeklyListeners, weeklyVisitors]
-                            .reduce((a, b) => a > b ? a : b).toDouble();
-                        return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+                        final maxValue = [
+                          weeklyMembers,
+                          weeklyListeners,
+                          weeklyVisitors
+                        ].reduce((a, b) => a > b ? a : b).toDouble();
+                        return maxValue > 100
+                            ? (maxValue / 5).ceilToDouble()
+                            : 20.0;
                       }(),
                       getDrawingHorizontalLine: (value) => FlLine(
                         color: Colors.grey.shade300,
@@ -837,43 +1146,49 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                     ),
                     barGroups: [
                       BarChartGroupData(
-                        x: 0, 
-                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                        barRods: [BarChartRodData(
-                          toY: weeklyMembers.toDouble(), 
-                          color: Colors.blue.shade600,
-                          width: 35,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(4),
-                            topRight: Radius.circular(4),
-                          ),
-                        )]
+                        x: 0,
+                        showingTooltipIndicators: [0],
+                        barRods: [
+                          BarChartRodData(
+                            toY: weeklyMembers.toDouble(),
+                            color: Colors.blue.shade600,
+                            width: 35,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(4),
+                              topRight: Radius.circular(4),
+                            ),
+                          )
+                        ],
                       ),
                       BarChartGroupData(
-                        x: 1, 
-                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                        barRods: [BarChartRodData(
-                          toY: weeklyListeners.toDouble(), 
-                          color: Colors.green.shade600,
-                          width: 35,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(4),
-                            topRight: Radius.circular(4),
-                          ),
-                        )]
+                        x: 1,
+                        showingTooltipIndicators: [0],
+                        barRods: [
+                          BarChartRodData(
+                            toY: weeklyListeners.toDouble(),
+                            color: Colors.orange.shade600,
+                            width: 35,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(4),
+                              topRight: Radius.circular(4),
+                            ),
+                          )
+                        ],
                       ),
                       BarChartGroupData(
-                        x: 2, 
-                        showingTooltipIndicators: [0], // Siempre mostrar tooltip
-                        barRods: [BarChartRodData(
-                          toY: weeklyVisitors.toDouble(), 
-                          color: Colors.orange.shade600,
-                          width: 35,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(4),
-                            topRight: Radius.circular(4),
-                          ),
-                        )]
+                        x: 2,
+                        showingTooltipIndicators: [0],
+                        barRods: [
+                          BarChartRodData(
+                            toY: weeklyVisitors.toDouble(),
+                            color: Colors.green.shade600,
+                            width: 35,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(4),
+                              topRight: Radius.circular(4),
+                            ),
+                          )
+                        ],
                       ),
                     ],
                   ),
@@ -885,4 +1200,4 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
       },
     );
   }
-} 
+}

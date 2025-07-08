@@ -29,15 +29,15 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
 
   Future<void> _loadData() async {
     final locationProvider = context.read<LocationProvider>();
-    
+
     if (locationProvider.cities.isEmpty) {
       await locationProvider.loadCities();
     }
-    
+
     // Cargar todas las comunas/rutas para el filtro
     final allCommunes = await locationProvider.loadAllCommunes();
     locationProvider.setCommunes = allCommunes;
-    
+
     // Cargar todas las ubicaciones
     final allLocations = await locationProvider.loadAllLocations(allCommunes);
     locationProvider.setLocations = allLocations;
@@ -49,20 +49,29 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
     }
   }
 
-  Map<String, dynamic> _calculateWeekData(List<AttendanceRecordModel> weekRecords) {
+  Map<String, dynamic> _calculateWeekData(
+      List<AttendanceRecordModel> weekRecords) {
     // Separar por días
-    final mieRecords = weekRecords.where((r) => r.date.weekday == DateTime.wednesday).toList();
-    final sabRecords = weekRecords.where((r) => r.date.weekday == DateTime.saturday).toList();
-    final domAmRecords = weekRecords.where((r) => 
-      r.date.weekday == DateTime.sunday && r.date.hour < 14).toList();
-    final domPmRecords = weekRecords.where((r) => 
-      r.date.weekday == DateTime.sunday && r.date.hour >= 14).toList();
+    final mieRecords =
+        weekRecords.where((r) => r.date.weekday == DateTime.wednesday).toList();
+    final sabRecords =
+        weekRecords.where((r) => r.date.weekday == DateTime.saturday).toList();
+    final domAmRecords = weekRecords
+        .where((r) => r.date.weekday == DateTime.sunday && r.date.hour < 14)
+        .toList();
+    final domPmRecords = weekRecords
+        .where((r) => r.date.weekday == DateTime.sunday && r.date.hour >= 14)
+        .toList();
 
     // Contar asistencias por día
-    int mieCount = mieRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
-    int sabCount = sabRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
-    int domAmCount = domAmRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
-    int domPmCount = domPmRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
+    int mieCount =
+        mieRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
+    int sabCount =
+        sabRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
+    int domAmCount =
+        domAmRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
+    int domPmCount =
+        domPmRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
 
     // TTL REAL: Suma total de asistencias
     int ttlReal = mieCount + sabCount + domAmCount + domPmCount;
@@ -88,9 +97,10 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
     };
   }
 
-  List<Map<String, dynamic>> _processRecordsToWeeks(List<AttendanceRecordModel> records) {
+  List<Map<String, dynamic>> _processRecordsToWeeks(
+      List<AttendanceRecordModel> records) {
     final Map<int, List<AttendanceRecordModel>> weekGroups = {};
-    
+
     // Agrupar registros por número de semana
     for (final record in records) {
       final weekNum = record.weekNumber ?? _getWeekNumber(record.date);
@@ -103,12 +113,12 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
     // Procesar cada semana
     final List<Map<String, dynamic>> weeklyData = [];
     final sortedWeeks = weekGroups.keys.toList()..sort();
-    
+
     for (final weekNum in sortedWeeks) {
       final weekRecords = weekGroups[weekNum]!;
       final firstDate = weekRecords.first.date;
       final weekData = _calculateWeekData(weekRecords);
-      
+
       weeklyData.add({
         'weekNumber': weekNum,
         'month': DateFormat('MMMM', 'es').format(firstDate).toUpperCase(),
@@ -128,13 +138,23 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
   }
 
   List<String> get _months => [
-    'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-    'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
-  ];
+        'ENERO',
+        'FEBRERO',
+        'MARZO',
+        'ABRIL',
+        'MAYO',
+        'JUNIO',
+        'JULIO',
+        'AGOSTO',
+        'SEPTIEMBRE',
+        'OCTUBRE',
+        'NOVIEMBRE',
+        'DICIEMBRE'
+      ];
 
   Color _getCellColor(int value, int maxValue) {
     if (maxValue == 0 || value == 0) return Colors.white;
-    
+
     final intensity = (value / maxValue).clamp(0.0, 1.0);
     return Color.lerp(Colors.blue.shade50, Colors.blue.shade200, intensity)!;
   }
@@ -165,10 +185,11 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
           final locationProvider = context.watch<LocationProvider>();
           final communes = locationProvider.communes;
           final locations = locationProvider.locations;
-          
+
           // Filtrar por año seleccionado
-          final yearRecords = allRecords.where((r) => r.date.year == selectedYear).toList();
-          
+          final yearRecords =
+              allRecords.where((r) => r.date.year == selectedYear).toList();
+
           // Filtrar por ruta si está seleccionada
           List<AttendanceRecordModel> routeFilteredRecords = yearRecords;
           if (selectedCommuneId != null) {
@@ -180,18 +201,19 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                 .where((r) => communeSectorIds.contains(r.sectorId))
                 .toList();
           }
-          
+
           final weeklyData = _processRecordsToWeeks(routeFilteredRecords);
 
           // Filtrar por mes si está seleccionado
-          final filteredData = selectedMonth != null 
-            ? weeklyData.where((w) => w['month'] == selectedMonth).toList()
-            : weeklyData;
+          final filteredData = selectedMonth != null
+              ? weeklyData.where((w) => w['month'] == selectedMonth).toList()
+              : weeklyData;
 
           // Calcular máximos para colores
           int maxTtlReal = 0;
           if (filteredData.isNotEmpty) {
-            final values = filteredData.map((w) => w['ttlReal'] as int).toList();
+            final values =
+                filteredData.map((w) => w['ttlReal'] as int).toList();
             if (values.any((v) => v > 0)) {
               maxTtlReal = values.reduce((a, b) => a > b ? a : b);
             }
@@ -209,62 +231,74 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Filtros:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const Text('Filtros:',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
                         // Primera fila: Año y Mes
                         Row(
-                      children: [
-                        // Selector de Año
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
-                              DropdownButtonFormField<int>(
-                                value: selectedYear,
-                                items: List.generate(5, (index) => DateTime.now().year - index)
-                                    .map((year) => DropdownMenuItem(
-                                      value: year,
-                                      child: Text(year.toString()),
-                                    )).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedYear = value!;
-                                    selectedMonth = null; // Reset month filter
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Selector de Mes
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Mes (Opcional):', style: TextStyle(fontWeight: FontWeight.bold)),
-                              DropdownButtonFormField<String>(
-                                value: selectedMonth,
-                                hint: const Text('Todos los meses'),
-                                items: [
-                                  const DropdownMenuItem<String>(
-                                    value: null,
-                                    child: Text('Todos los meses'),
+                          children: [
+                            // Selector de Año
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Año:',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  DropdownButtonFormField<int>(
+                                    value: selectedYear,
+                                    items: List.generate(
+                                            5,
+                                            (index) =>
+                                                DateTime.now().year - index)
+                                        .map((year) => DropdownMenuItem(
+                                              value: year,
+                                              child: Text(year.toString()),
+                                            ))
+                                        .toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedYear = value!;
+                                        selectedMonth =
+                                            null; // Reset month filter
+                                      });
+                                    },
                                   ),
-                                  ..._months.map((month) => DropdownMenuItem(
-                                    value: month,
-                                    child: Text(month),
-                                  )),
                                 ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedMonth = value;
-                                  });
-                                },
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Selector de Mes
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Mes (Opcional):',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  DropdownButtonFormField<String>(
+                                    value: selectedMonth,
+                                    hint: const Text('Todos los meses'),
+                                    items: [
+                                      const DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text('Todos los meses'),
+                                      ),
+                                      ..._months
+                                          .map((month) => DropdownMenuItem(
+                                                value: month,
+                                                child: Text(month),
+                                              )),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedMonth = value;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -273,7 +307,8 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Ruta:', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Text('Ruta:',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                             DropdownButtonFormField<String>(
                               value: selectedCommuneId,
                               hint: const Text('Todas las rutas'),
@@ -283,9 +318,9 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                                   child: Text('Todas las rutas'),
                                 ),
                                 ...communes.map((commune) => DropdownMenuItem(
-                                  value: commune.id,
-                                  child: Text(commune.name),
-                                )),
+                                      value: commune.id,
+                                      child: Text(commune.name),
+                                    )),
                               ],
                               onChanged: (value) {
                                 setState(() {
@@ -300,7 +335,7 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Tabla de TTLs
                 if (filteredData.isNotEmpty) ...[
                   Card(
@@ -332,11 +367,19 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
 
   Widget _buildTTLTable(List<Map<String, dynamic>> data, int maxTtlReal) {
     final locationProvider = context.read<LocationProvider>();
-    final selectedRouteName = selectedCommuneId != null 
-        ? locationProvider.communes.firstWhere((c) => c.id == selectedCommuneId, orElse: () => 
-            Commune(id: '', name: 'Ruta Desconocida', cityId: '', locationIds: [], createdAt: DateTime.now(), updatedAt: DateTime.now())).name
+    final selectedRouteName = selectedCommuneId != null
+        ? locationProvider.communes
+            .firstWhere((c) => c.id == selectedCommuneId,
+                orElse: () => Commune(
+                    id: '',
+                    name: 'Ruta Desconocida',
+                    cityId: '',
+                    locationIds: [],
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now()))
+            .name
         : 'Todas las rutas';
-        
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -348,8 +391,10 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: MaterialStateColor.resolveWith((states) => Theme.of(context).primaryColor.withOpacity(0.1)),
-            headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            headingRowColor: MaterialStateColor.resolveWith(
+                (states) => Theme.of(context).primaryColor.withOpacity(0.1)),
+            headingTextStyle: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white),
             columnSpacing: 12,
             dataRowMinHeight: 35,
             dataRowMaxHeight: 35,
@@ -365,107 +410,163 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
               DataColumn(label: Text('SEMANA')),
               DataColumn(label: Text('VISITAS')),
             ],
-            rows: data.map((weekData) => DataRow(
-              cells: [
-                DataCell(Text(
-                  weekData['month'],
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                )),
-                DataCell(Text(weekData['weekNumber'].toString())),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getCellColor(weekData['mie'], maxTtlReal),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['mie'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getCellColor(weekData['sab'], maxTtlReal),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['sab'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getCellColor(weekData['domAm'], maxTtlReal),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['domAm'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: _getCellColor(weekData['domPm'], maxTtlReal),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['domPm'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['ttlReal'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['ttlSemana'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                DataCell(Text(weekData['weekNumber'].toString())),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade100,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      weekData['visitas'].toString(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            )).toList(),
+            rows: [
+              ...data.map((weekData) => DataRow(
+                    cells: [
+                      DataCell(Text(
+                        weekData['month'],
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      )),
+                      DataCell(Text(weekData['weekNumber'].toString())),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getCellColor(weekData['mie'], maxTtlReal),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['mie'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getCellColor(weekData['sab'], maxTtlReal),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['sab'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getCellColor(weekData['domAm'], maxTtlReal),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['domAm'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getCellColor(weekData['domPm'], maxTtlReal),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['domPm'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['ttlReal'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade100,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['ttlSemana'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      DataCell(Text(weekData['weekNumber'].toString())),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade100,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            weekData['visitas'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )),
+              // Fila de totales
+              DataRow(
+                color: MaterialStateProperty.resolveWith<Color?>(
+                    (states) => Colors.grey.shade100),
+                cells: [
+                  const DataCell(Text('TOTAL',
+                      style: TextStyle(fontWeight: FontWeight.bold))),
+                  const DataCell(Text('-')),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['mie'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['sab'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['domAm'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['domPm'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['ttlReal'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Text(
+                      data
+                          .fold<int>(
+                              0, (sum, w) => sum + (w['ttlSemana'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                  const DataCell(Text('-')),
+                  DataCell(Text(
+                      data
+                          .fold<int>(0, (sum, w) => sum + (w['visitas'] as int))
+                          .toString(),
+                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -500,4 +601,4 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
       ],
     );
   }
-} 
+}
