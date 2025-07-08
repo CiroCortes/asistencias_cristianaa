@@ -1296,8 +1296,8 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
               ),
               const SizedBox(height: 24),
               if (PermissionUtils.canViewReports(user)) ...[
-                const Text(
-                  'Asistencia Mensual por Tipo',
+                Text(
+                  'Asistencia Semanal por Tipo - Semana $currentWeek',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24), // Más espacio para el título
@@ -1313,14 +1313,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                       alignment: BarChartAlignment.spaceEvenly,
                       // Calcular maxY más inteligente: máximo valor + 15% (no fijo)
                       maxY: () {
-                        // Calcular asistentes únicos por tipo para el mes actual
-                        Set<String> monthlyUniqueMembers = {};
-                        Set<String> monthlyUniqueListeners = {};
-                        int totalMonthlyVisitors = 0;
+                        // Calcular asistentes únicos por tipo para la semana actual
+                        Set<String> weeklyUniqueMembers = {};
+                        Set<String> weeklyUniqueListeners = {};
+                        int totalWeeklyVisitors = 0;
 
-                        for (final record in currentMonthRecords) {
+                        for (final record in currentWeekRecordsFiltered) {
                           // Contar visitas (se mantienen igual)
-                          totalMonthlyVisitors += record.visitorCount;
+                          totalWeeklyVisitors += record.visitorCount;
 
                           // Contar miembros y oyentes únicos
                           for (final attendeeId in record.attendedAttendeeIds) {
@@ -1334,17 +1334,17 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                   createdByUserId: ''),
                             );
                             if (attendee.type == 'member') {
-                              monthlyUniqueMembers.add(attendeeId);
+                              weeklyUniqueMembers.add(attendeeId);
                             } else if (attendee.type == 'listener') {
-                              monthlyUniqueListeners.add(attendeeId);
+                              weeklyUniqueListeners.add(attendeeId);
                             }
                           }
                         }
 
                         final values = [
-                          monthlyUniqueMembers.length,
-                          monthlyUniqueListeners.length,
-                          totalMonthlyVisitors
+                          weeklyUniqueMembers.length,
+                          weeklyUniqueListeners.length,
+                          totalWeeklyVisitors
                         ];
                         if (values.isEmpty || values.every((v) => v == 0)) {
                           return 10.0; // Valor por defecto si no hay datos
@@ -1371,14 +1371,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             String value = '';
                             Color color = Colors.black;
 
-                            // Calcular asistentes únicos por tipo para el mes actual
-                            Set<String> monthlyUniqueMembers = {};
-                            Set<String> monthlyUniqueListeners = {};
-                            int totalMonthlyVisitors = 0;
+                            // Calcular asistentes únicos por tipo para la semana actual
+                            Set<String> weeklyUniqueMembers = {};
+                            Set<String> weeklyUniqueListeners = {};
+                            int totalWeeklyVisitors = 0;
 
-                            for (final record in currentMonthRecords) {
+                            for (final record in currentWeekRecordsFiltered) {
                               // Contar visitas (se mantienen igual)
-                              totalMonthlyVisitors += record.visitorCount;
+                              totalWeeklyVisitors += record.visitorCount;
 
                               // Contar miembros y oyentes únicos
                               for (final attendeeId
@@ -1393,24 +1393,24 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                       createdByUserId: ''),
                                 );
                                 if (attendee.type == 'member') {
-                                  monthlyUniqueMembers.add(attendeeId);
+                                  weeklyUniqueMembers.add(attendeeId);
                                 } else if (attendee.type == 'listener') {
-                                  monthlyUniqueListeners.add(attendeeId);
+                                  weeklyUniqueListeners.add(attendeeId);
                                 }
                               }
                             }
 
                             switch (group.x) {
                               case 0:
-                                value = '${monthlyUniqueMembers.length}';
+                                value = '${weeklyUniqueMembers.length}';
                                 color = Colors.blue;
                                 break;
                               case 1:
-                                value = '${monthlyUniqueListeners.length}';
+                                value = '${weeklyUniqueListeners.length}';
                                 color = Colors.orange;
                                 break;
                               case 2:
-                                value = '$totalMonthlyVisitors';
+                                value = '$totalWeeklyVisitors';
                                 color = Colors.green;
                                 break;
                             }
@@ -1466,14 +1466,14 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                         show: true,
                         drawVerticalLine: false,
                         horizontalInterval: () {
-                          // Calcular asistentes únicos por tipo para el mes actual
-                          Set<String> monthlyUniqueMembers = {};
-                          Set<String> monthlyUniqueListeners = {};
-                          int totalMonthlyVisitors = 0;
+                          // Calcular asistentes únicos por tipo para la semana actual
+                          Set<String> weeklyUniqueMembers = {};
+                          Set<String> weeklyUniqueListeners = {};
+                          int totalWeeklyVisitors = 0;
 
-                          for (final record in currentMonthRecords) {
+                          for (final record in currentWeekRecordsFiltered) {
                             // Contar visitas (se mantienen igual)
-                            totalMonthlyVisitors += record.visitorCount;
+                            totalWeeklyVisitors += record.visitorCount;
 
                             // Contar miembros y oyentes únicos
                             for (final attendeeId
@@ -1488,17 +1488,17 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                     createdByUserId: ''),
                               );
                               if (attendee.type == 'member') {
-                                monthlyUniqueMembers.add(attendeeId);
+                                weeklyUniqueMembers.add(attendeeId);
                               } else if (attendee.type == 'listener') {
-                                monthlyUniqueListeners.add(attendeeId);
+                                weeklyUniqueListeners.add(attendeeId);
                               }
                             }
                           }
 
                           final maxValue = [
-                            monthlyUniqueMembers.length,
-                            monthlyUniqueListeners.length,
-                            totalMonthlyVisitors
+                            weeklyUniqueMembers.length,
+                            weeklyUniqueListeners.length,
+                            totalWeeklyVisitors
                           ].reduce((a, b) => a > b ? a : b).toDouble();
                           return maxValue > 100
                               ? (maxValue / 5).ceilToDouble()
@@ -1518,9 +1518,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             barRods: [
                               BarChartRodData(
                                 toY: () {
-                                  // Calcular miembros únicos
-                                  Set<String> monthlyUniqueMembers = {};
-                                  for (final record in currentMonthRecords) {
+                                  // Calcular miembros únicos de la semana
+                                  Set<String> weeklyUniqueMembers = {};
+                                  for (final record
+                                      in currentWeekRecordsFiltered) {
                                     for (final attendeeId
                                         in record.attendedAttendeeIds) {
                                       final attendee = attendees.firstWhere(
@@ -1533,11 +1534,11 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                             createdByUserId: ''),
                                       );
                                       if (attendee.type == 'member') {
-                                        monthlyUniqueMembers.add(attendeeId);
+                                        weeklyUniqueMembers.add(attendeeId);
                                       }
                                     }
                                   }
-                                  return monthlyUniqueMembers.length.toDouble();
+                                  return weeklyUniqueMembers.length.toDouble();
                                 }(),
                                 color: Colors.blue.shade600,
                                 width: 35,
@@ -1555,9 +1556,10 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             barRods: [
                               BarChartRodData(
                                 toY: () {
-                                  // Calcular oyentes únicos
-                                  Set<String> monthlyUniqueListeners = {};
-                                  for (final record in currentMonthRecords) {
+                                  // Calcular oyentes únicos de la semana
+                                  Set<String> weeklyUniqueListeners = {};
+                                  for (final record
+                                      in currentWeekRecordsFiltered) {
                                     for (final attendeeId
                                         in record.attendedAttendeeIds) {
                                       final attendee = attendees.firstWhere(
@@ -1570,11 +1572,11 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                                             createdByUserId: ''),
                                       );
                                       if (attendee.type == 'listener') {
-                                        monthlyUniqueListeners.add(attendeeId);
+                                        weeklyUniqueListeners.add(attendeeId);
                                       }
                                     }
                                   }
-                                  return monthlyUniqueListeners.length
+                                  return weeklyUniqueListeners.length
                                       .toDouble();
                                 }(),
                                 color: Colors.orange.shade600,
@@ -1593,12 +1595,13 @@ class _HomeDashboardContentState extends State<_HomeDashboardContent> {
                             barRods: [
                               BarChartRodData(
                                 toY: () {
-                                  // Calcular visitas totales (se mantienen igual)
-                                  int totalMonthlyVisitors = 0;
-                                  for (final record in currentMonthRecords) {
-                                    totalMonthlyVisitors += record.visitorCount;
+                                  // Calcular visitas totales de la semana
+                                  int totalWeeklyVisitors = 0;
+                                  for (final record
+                                      in currentWeekRecordsFiltered) {
+                                    totalWeeklyVisitors += record.visitorCount;
                                   }
-                                  return totalMonthlyVisitors.toDouble();
+                                  return totalWeeklyVisitors.toDouble();
                                 }(),
                                 color: Colors.green.shade600,
                                 width: 35,
@@ -2012,6 +2015,17 @@ class _ComunaSectorAttendanceChartState
                             ),
                           ),
                           borderData: FlBorderData(show: false),
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: maxValue > 0
+                                ? (maxValue.toDouble() / 5).ceilToDouble()
+                                : 20.0,
+                            getDrawingHorizontalLine: (value) => FlLine(
+                              color: Colors.grey.shade300,
+                              strokeWidth: 0.5,
+                            ),
+                          ),
                           barGroups: sectorData.asMap().entries.map((entry) {
                             final index = entry.key;
                             final data = entry.value;
@@ -2263,6 +2277,17 @@ class _WeeklyRouteAttendanceChart extends StatelessWidget {
                   ),
                 ),
                 borderData: FlBorderData(show: false),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxValue > 0
+                      ? (maxValue.toDouble() / 5).ceilToDouble()
+                      : 20.0,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey.shade300,
+                    strokeWidth: 0.5,
+                  ),
+                ),
                 barGroups: communeData.asMap().entries.map((entry) {
                   final index = entry.key;
                   final data = entry.value;
