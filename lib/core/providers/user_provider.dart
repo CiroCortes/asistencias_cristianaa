@@ -20,7 +20,12 @@ class UserProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   UserProvider() {
-    // Escuchar cambios en el estado de autenticación
+    // Solo escuchar cambios cuando el usuario se autentique correctamente
+    // No iniciar automáticamente al crear el provider
+  }
+
+  // Método para iniciar el listener cuando el usuario se autentique
+  void initializeUserListener() {
     FirebaseAuth.instance.authStateChanges().listen((User? firebaseUser) async {
       if (firebaseUser != null) {
         await _setupUserListener(firebaseUser.uid);
@@ -34,7 +39,7 @@ class UserProvider with ChangeNotifier {
 
   Future<void> _setupUserListener(String uid) async {
     _cleanupUserListener(); // Limpiar suscripción anterior si existe
-    
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -125,4 +130,4 @@ class UserProvider with ChangeNotifier {
     _cleanupUserListener();
     super.dispose();
   }
-} 
+}

@@ -18,11 +18,15 @@ class PermissionUtils {
   }
 
   static bool canRecordAttendance(UserModel user) {
-    return user.isApproved && user.sectorId != null;
+    // Los administradores pueden registrar asistencia sin sector asignado
+    // Los usuarios normales necesitan tener sector asignado
+    return user.isApproved && (user.role == 'admin' || user.sectorId != null);
   }
 
   static bool canManageSector(UserModel user, String sectorId) {
-    return user.role == 'admin' && user.isApproved || 
-           (user.role == 'normal_user' && user.isApproved && user.sectorId == sectorId);
+    return user.role == 'admin' && user.isApproved ||
+        (user.role == 'normal_user' &&
+            user.isApproved &&
+            user.sectorId == sectorId);
   }
-} 
+}

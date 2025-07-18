@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:asistencias_app/presentation/screens/splash_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/auth_wrapper.dart';
 import 'package:asistencias_app/presentation/screens/auth/login_screen.dart';
-import 'package:asistencias_app/presentation/screens/auth/register_screen.dart';
 import 'package:asistencias_app/presentation/screens/auth/pending_approval_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/admin_dashboard_screen.dart';
 import 'package:asistencias_app/presentation/screens/user_dashboard/user_dashboard_screen.dart';
@@ -21,7 +20,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Inicializar Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -53,7 +52,8 @@ class AsistenciasApp extends StatelessWidget {
               AttendeeProvider(userProvider),
         ),
         ChangeNotifierProxyProvider<UserProvider, AttendanceRecordProvider>(
-          create: (context) => AttendanceRecordProvider(context.read<UserProvider>()),
+          create: (context) =>
+              AttendanceRecordProvider(context.read<UserProvider>()),
           update: (context, userProvider, previousAttendanceRecordProvider) =>
               AttendanceRecordProvider(userProvider),
         ),
@@ -79,7 +79,6 @@ class AsistenciasApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/auth': (context) => const AuthWrapper(),
           '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
           '/pending_approval': (context) => const PendingApprovalScreen(),
           '/admin_dashboard': (context) => const AdminDashboardScreen(),
           '/user_dashboard': (context) => const UserDashboardScreen(),

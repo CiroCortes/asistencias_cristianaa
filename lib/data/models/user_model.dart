@@ -7,6 +7,7 @@ class UserModel {
   final String role; // 'normal_user', 'admin'
   final String? sectorId; // ID del sector al que pertenece el usuario normal
   final bool isApproved; // Para la aprobación del administrador
+  final bool isActive; // Para la activación/desactivación del usuario
   final String? photoUrl;
 
   UserModel({
@@ -16,32 +17,36 @@ class UserModel {
     required this.role,
     this.sectorId,
     required this.isApproved,
+    this.isActive = true, // Por defecto activo
     this.photoUrl,
   });
 
   factory UserModel.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options) {
+      DocumentSnapshot<Map<String, dynamic>> snapshot,
+      SnapshotOptions? options) {
     final data = snapshot.data();
-    
+
     // Verificar que los campos requeridos no sean null
     if (data == null) {
       throw Exception('User data is null for document ${snapshot.id}');
     }
-    
+
     final email = data['email'] as String?;
     final displayName = data['displayName'] as String?;
     final role = data['role'] as String?;
-    
+
     if (email == null || email.isEmpty) {
-      throw Exception('User email is null or empty for document ${snapshot.id}');
+      throw Exception(
+          'User email is null or empty for document ${snapshot.id}');
     }
     if (displayName == null || displayName.isEmpty) {
-      throw Exception('User displayName is null or empty for document ${snapshot.id}');
+      throw Exception(
+          'User displayName is null or empty for document ${snapshot.id}');
     }
     if (role == null || role.isEmpty) {
       throw Exception('User role is null or empty for document ${snapshot.id}');
     }
-    
+
     return UserModel(
       uid: snapshot.id,
       email: email,
@@ -49,6 +54,7 @@ class UserModel {
       role: role,
       sectorId: data['sectorId'] as String?,
       isApproved: data['isApproved'] ?? false,
+      isActive: data['isActive'] ?? true, // Por defecto activo si no existe
       photoUrl: data['photoUrl'] as String?,
     );
   }
@@ -60,7 +66,8 @@ class UserModel {
       "role": role,
       "sectorId": sectorId,
       "isApproved": isApproved,
+      "isActive": isActive,
       "photoUrl": photoUrl,
     };
   }
-} 
+}

@@ -23,11 +23,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _checkConnection();
-    // Cargar el usuario después de que el widget esté montado
+    // Inicializar el listener del usuario solo cuando se autentique
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final userProvider = context.read<UserProvider>();
-        userProvider.loadUser();
+        userProvider.initializeUserListener();
       }
     });
   }
@@ -151,7 +151,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
                       const SizedBox(height: 16),
                       Text(
                         userProvider.errorMessage!,
@@ -171,16 +172,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
             }
 
             final user = userProvider.user;
-            
+
             // Si no se pudo cargar el usuario
             if (user == null) {
-              // Forzar recarga del usuario
-              userProvider.loadUser();
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              // Solo intentar cargar si hay un usuario autenticado en Firebase Auth
+              final firebaseUser = FirebaseAuth.instance.currentUser;
+              if (firebaseUser != null) {
+                userProvider.loadUser();
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              } else {
+                // Si no hay usuario autenticado, ir al login
+                return const LoginScreen();
+              }
             }
 
             // Si el usuario no está aprobado, mostrar pantalla de espera
@@ -197,4 +204,4 @@ class _AuthWrapperState extends State<AuthWrapper> {
       },
     );
   }
-} 
+}

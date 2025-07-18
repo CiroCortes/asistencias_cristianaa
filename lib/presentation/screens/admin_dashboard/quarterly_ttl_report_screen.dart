@@ -9,7 +9,8 @@ class QuarterlyTTLReportScreen extends StatefulWidget {
   const QuarterlyTTLReportScreen({super.key});
 
   @override
-  State<QuarterlyTTLReportScreen> createState() => _QuarterlyTTLReportScreenState();
+  State<QuarterlyTTLReportScreen> createState() =>
+      _QuarterlyTTLReportScreenState();
 }
 
 class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
@@ -27,7 +28,7 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
 
   Future<void> _loadData() async {
     final locationProvider = context.read<LocationProvider>();
-    
+
     if (locationProvider.cities.isEmpty) {
       await locationProvider.loadCities();
     }
@@ -84,7 +85,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     }
   }
 
-  Map<String, dynamic> _calculateMonthTTLs(List<AttendanceRecordModel> monthRecords) {
+  Map<String, dynamic> _calculateMonthTTLs(
+      List<AttendanceRecordModel> monthRecords) {
     // Agrupar por semana
     final Map<int, List<AttendanceRecordModel>> weekGroups = {};
     for (final record in monthRecords) {
@@ -105,15 +107,16 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
 
     for (final weekRecords in weekGroups.values) {
       // TTL REAL: Suma de todas las asistencias
-      final weekTtlReal = weekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
-      
+      final weekTtlReal =
+          weekRecords.fold(0, (sum, r) => sum + r.attendedAttendeeIds.length);
+
       // TTL SEMANA: Asistentes únicos
       final Set<String> uniqueAttendees = {};
       for (final record in weekRecords) {
         uniqueAttendees.addAll(record.attendedAttendeeIds);
       }
       final weekTtlSemana = uniqueAttendees.length;
-      
+
       // VISITAS: Total de visitantes
       final weekVisitas = weekRecords.fold(0, (sum, r) => sum + r.visitorCount);
 
@@ -133,16 +136,28 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       'sumaTtlSemana': totalTtlSemana,
       'sumaVisitas': totalVisitas,
       'promedioTtlReal': weekCount > 0 ? (totalTtlReal / weekCount).round() : 0,
-      'promedioTtlSemana': weekCount > 0 ? (totalTtlSemana / weekCount).round() : 0,
+      'promedioTtlSemana':
+          weekCount > 0 ? (totalTtlSemana / weekCount).round() : 0,
       'promedioVisitas': weekCount > 0 ? (totalVisitas / weekCount).round() : 0,
       'weekCount': weekCount,
     };
   }
 
   int _getWeekNumber(DateTime date) {
-    final firstDayOfYear = DateTime(date.year, 1, 1);
-    final daysSinceFirstDay = date.difference(firstDayOfYear).inDays;
-    return ((daysSinceFirstDay + firstDayOfYear.weekday - 1) / 7).ceil();
+    // SISTEMA NO ISO: Usar la misma lógica que date_utils.dart
+    // La semana 1 empieza el 1 de enero, sin importar el día de la semana
+    DateTime week1Start = DateTime(date.year, 1, 1);
+
+    // Si la fecha es anterior al 1 de enero, usar el 1 de enero del año anterior
+    if (date.isBefore(week1Start)) {
+      week1Start = DateTime(date.year - 1, 1, 1);
+    }
+
+    // Calcular días desde el 1 de enero
+    int diffDays = date.difference(week1Start).inDays;
+
+    // El número de semana es (días / 7) + 1
+    return (diffDays / 7).floor() + 1;
   }
 
   @override
@@ -176,11 +191,12 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
           for (int i = 0; i < quarterMonths.length; i++) {
             final monthNum = quarterMonths[i];
             final monthName = quarterMonthNames[i];
-            
-            final monthRecords = allRecords.where((r) => 
-              r.date.year == selectedYear && r.date.month == monthNum
-            ).toList();
-            
+
+            final monthRecords = allRecords
+                .where((r) =>
+                    r.date.year == selectedYear && r.date.month == monthNum)
+                .toList();
+
             monthlyData[monthName] = _calculateMonthTTLs(monthRecords);
           }
 
@@ -192,11 +208,11 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
                 // Filtros
                 _buildFilters(),
                 const SizedBox(height: 24),
-                
+
                 // Sección SUMAS
                 _buildSumasSection(monthlyData, quarterMonthNames),
                 const SizedBox(height: 32),
-                
+
                 // Sección PROMEDIOS
                 _buildPromediosSection(monthlyData, quarterMonthNames),
               ],
@@ -218,14 +234,17 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Año:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Año:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<int>(
                     value: selectedYear,
-                    items: List.generate(5, (index) => DateTime.now().year - index)
-                        .map((year) => DropdownMenuItem(
-                          value: year,
-                          child: Text(year.toString()),
-                        )).toList(),
+                    items:
+                        List.generate(5, (index) => DateTime.now().year - index)
+                            .map((year) => DropdownMenuItem(
+                                  value: year,
+                                  child: Text(year.toString()),
+                                ))
+                            .toList(),
                     onChanged: (value) {
                       setState(() {
                         selectedYear = value!;
@@ -241,14 +260,19 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Trimestre:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Trimestre:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<int>(
                     value: selectedQuarter,
                     items: [
-                      const DropdownMenuItem(value: 1, child: Text('1er Trimestre')),
-                      const DropdownMenuItem(value: 2, child: Text('2do Trimestre')),
-                      const DropdownMenuItem(value: 3, child: Text('3er Trimestre')),
-                      const DropdownMenuItem(value: 4, child: Text('4to Trimestre')),
+                      const DropdownMenuItem(
+                          value: 1, child: Text('1er Trimestre')),
+                      const DropdownMenuItem(
+                          value: 2, child: Text('2do Trimestre')),
+                      const DropdownMenuItem(
+                          value: 3, child: Text('3er Trimestre')),
+                      const DropdownMenuItem(
+                          value: 4, child: Text('4to Trimestre')),
                     ],
                     onChanged: (value) {
                       setState(() {
@@ -265,7 +289,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildSumasSection(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildSumasSection(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -277,11 +302,11 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Tabla de Sumas
             _buildSumasTable(monthlyData, monthNames),
             const SizedBox(height: 24),
-            
+
             // Gráfico de Sumas
             const SizedBox(height: 8), // Más espacio para el título
             _buildSumasChart(monthlyData, monthNames),
@@ -291,7 +316,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildPromediosSection(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildPromediosSection(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -303,11 +329,11 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Tabla de Promedios
             _buildPromediosTable(monthlyData, monthNames),
             const SizedBox(height: 24),
-            
+
             // Gráfico de Promedios
             const SizedBox(height: 8), // Más espacio para el título
             _buildPromediosChart(monthlyData, monthNames),
@@ -317,7 +343,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildSumasTable(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildSumasTable(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     // Calcular totales generales
     int totalTtlReal = 0;
     int totalTtlSemana = 0;
@@ -334,30 +361,39 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       columnWidths: const {
         0: FlexColumnWidth(2), // MES - más ancho
         1: FlexColumnWidth(1.5), // TTL REAL
-        2: FlexColumnWidth(1.5), // TTL SEMANA  
+        2: FlexColumnWidth(1.5), // TTL SEMANA
         3: FlexColumnWidth(1.5), // VISITAS
       },
       border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
       children: [
         // Header row
         TableRow(
-          decoration: BoxDecoration(color: Theme.of(context).primaryColor.withOpacity(0.1)),
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1)),
           children: const [
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('MES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('MES',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('TTL\nREAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('TTL\nREAL',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('TTL\nSEMANA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('TTL\nSEMANA',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('VISITAS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('VISITAS',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -368,42 +404,61 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: Text(monthName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12), textAlign: TextAlign.center),
+                child: Text(monthName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 12),
+                    textAlign: TextAlign.center),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['sumaTtlReal'] ?? 0, Colors.blue.shade100)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['sumaTtlReal'] ?? 0, Colors.blue.shade100)),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['sumaTtlSemana'] ?? 0, Colors.grey.shade200)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['sumaTtlSemana'] ?? 0, Colors.grey.shade200)),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['sumaVisitas'] ?? 0, Colors.grey.shade300)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['sumaVisitas'] ?? 0, Colors.grey.shade300)),
               ),
             ],
           );
         }),
         // Total row
         TableRow(
-          decoration: BoxDecoration(color: Theme.of(context).primaryColor.withOpacity(0.05)),
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.05)),
           children: [
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('Total general', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.center),
+              child: Text('Total general',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(totalTtlReal, Colors.grey.shade200, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(totalTtlReal, Colors.grey.shade200,
+                      bold: true)),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(totalTtlSemana, Colors.grey.shade300, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(
+                      totalTtlSemana, Colors.grey.shade300,
+                      bold: true)),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(totalVisitas, Colors.grey.shade400, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(totalVisitas, Colors.grey.shade400,
+                      bold: true)),
             ),
           ],
         ),
@@ -411,7 +466,8 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildPromediosTable(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildPromediosTable(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     // Calcular promedios generales
     int validMonths = 0;
     int totalPromedioReal = 0;
@@ -428,40 +484,51 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       }
     }
 
-    final promedioGeneral = validMonths > 0 ? {
-      'real': (totalPromedioReal / validMonths).round(),
-      'semana': (totalPromedioSemana / validMonths).round(),
-      'visitas': (totalPromedioVisitas / validMonths).round(),
-    } : {'real': 0, 'semana': 0, 'visitas': 0};
+    final promedioGeneral = validMonths > 0
+        ? {
+            'real': (totalPromedioReal / validMonths).round(),
+            'semana': (totalPromedioSemana / validMonths).round(),
+            'visitas': (totalPromedioVisitas / validMonths).round(),
+          }
+        : {'real': 0, 'semana': 0, 'visitas': 0};
 
     return Table(
       columnWidths: const {
         0: FlexColumnWidth(2), // MES - más ancho
         1: FlexColumnWidth(1.5), // PROM REAL
-        2: FlexColumnWidth(1.5), // PROM SEMANA  
+        2: FlexColumnWidth(1.5), // PROM SEMANA
         3: FlexColumnWidth(1.5), // PROM VISITAS
       },
       border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
       children: [
         // Header row
         TableRow(
-          decoration: BoxDecoration(color: Theme.of(context).primaryColor.withOpacity(0.1)),
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1)),
           children: const [
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('MES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('MES',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('PROM\nREAL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('PROM\nREAL',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('PROM\nSEMANA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('PROM\nSEMANA',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('PROM\nVISITAS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              child: Text('PROM\nVISITAS',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -472,42 +539,63 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: Text(monthName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12), textAlign: TextAlign.center),
+                child: Text(monthName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 12),
+                    textAlign: TextAlign.center),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['promedioTtlReal'] ?? 0, Colors.blue.shade100)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['promedioTtlReal'] ?? 0, Colors.blue.shade100)),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['promedioTtlSemana'] ?? 0, Colors.grey.shade200)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['promedioTtlSemana'] ?? 0, Colors.grey.shade200)),
               ),
               Padding(
                 padding: const EdgeInsets.all(4.0),
-                child: Center(child: _buildCellContainer(data['promedioVisitas'] ?? 0, Colors.grey.shade300)),
+                child: Center(
+                    child: _buildCellContainer(
+                        data['promedioVisitas'] ?? 0, Colors.grey.shade300)),
               ),
             ],
           );
         }),
         // Total row
         TableRow(
-          decoration: BoxDecoration(color: Theme.of(context).primaryColor.withOpacity(0.05)),
+          decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.05)),
           children: [
             const Padding(
               padding: EdgeInsets.all(8.0),
-              child: Text('Total general', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.center),
+              child: Text('Total general',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  textAlign: TextAlign.center),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(promedioGeneral['real']!, Colors.grey.shade200, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(
+                      promedioGeneral['real']!, Colors.grey.shade200,
+                      bold: true)),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(promedioGeneral['semana']!, Colors.grey.shade300, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(
+                      promedioGeneral['semana']!, Colors.grey.shade300,
+                      bold: true)),
             ),
             Padding(
               padding: const EdgeInsets.all(4.0),
-              child: Center(child: _buildCellContainer(promedioGeneral['visitas']!, Colors.grey.shade400, bold: true)),
+              child: Center(
+                  child: _buildCellContainer(
+                      promedioGeneral['visitas']!, Colors.grey.shade400,
+                      bold: true)),
             ),
           ],
         ),
@@ -532,17 +620,22 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildSumasChart(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildSumasChart(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     final List<BarChartGroupData> barGroups = [];
-    
+
     for (int i = 0; i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final data = monthlyData[monthName] ?? {};
-      
+
       barGroups.add(
         BarChartGroupData(
           x: i,
-          showingTooltipIndicators: [0, 1, 2], // Mostrar tooltips para todas las barras
+          showingTooltipIndicators: [
+            0,
+            1,
+            2
+          ], // Mostrar tooltips para todas las barras
           barRods: [
             BarChartRodData(
               toY: (data['sumaTtlReal'] ?? 0).toDouble(),
@@ -578,25 +671,27 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
 
     return Container(
       height: 320, // Altura aumentada para acomodar tooltips
-      padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+      padding: const EdgeInsets.only(
+          top: 30, bottom: 20, left: 16, right: 16), // Padding interno
       child: BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: _getMaxValue(monthlyData, monthNames, true),
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _getMaxValue(monthlyData, monthNames, true),
           barTouchData: BarTouchData(
             enabled: false, // Tooltips siempre visibles
             touchTooltipData: BarTouchTooltipData(
               tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
               tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
               tooltipRoundedRadius: 4,
-              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               tooltipMargin: 8,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final monthName = monthNames[group.x.toInt()];
                 final data = monthlyData[monthName] ?? {};
                 String value = '';
                 Color color = Colors.black;
-                
+
                 switch (rodIndex) {
                   case 0:
                     value = '${data['sumaTtlReal'] ?? 0}';
@@ -622,34 +717,40 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               },
             ),
           ),
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
+          barGroups: barGroups,
+          titlesData: FlTitlesData(
+            leftTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
                 reservedSize: 30, // Espacio reservado para etiquetas
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < monthNames.length) {
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < monthNames.length) {
                     return Text(
-                      monthNames[value.toInt()], 
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                      monthNames[value.toInt()],
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w500),
                     );
-                }
-                return const Text('');
-              },
+                  }
+                  return const Text('');
+                },
+              ),
             ),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
+          borderData: FlBorderData(show: false),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             horizontalInterval: () {
               final maxValue = _getMaxValue(monthlyData, monthNames, true);
-              return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+              return maxValue > 100
+                  ? (maxValue / 5).ceilToDouble()
+                  : 20.0; // Líneas de guía inteligentes
             }(),
             getDrawingHorizontalLine: (value) => FlLine(
               color: Colors.grey.shade300,
@@ -661,17 +762,22 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  Widget _buildPromediosChart(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
+  Widget _buildPromediosChart(
+      Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames) {
     final List<BarChartGroupData> barGroups = [];
-    
+
     for (int i = 0; i < monthNames.length; i++) {
       final monthName = monthNames[i];
       final data = monthlyData[monthName] ?? {};
-      
+
       barGroups.add(
         BarChartGroupData(
           x: i,
-          showingTooltipIndicators: [0, 1, 2], // Mostrar tooltips para todas las barras
+          showingTooltipIndicators: [
+            0,
+            1,
+            2
+          ], // Mostrar tooltips para todas las barras
           barRods: [
             BarChartRodData(
               toY: (data['promedioTtlReal'] ?? 0).toDouble(),
@@ -707,25 +813,27 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
 
     return Container(
       height: 320, // Altura aumentada para acomodar tooltips
-      padding: const EdgeInsets.only(top: 30, bottom: 20, left: 16, right: 16), // Padding interno
+      padding: const EdgeInsets.only(
+          top: 30, bottom: 20, left: 16, right: 16), // Padding interno
       child: BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: _getMaxValue(monthlyData, monthNames, false),
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: _getMaxValue(monthlyData, monthNames, false),
           barTouchData: BarTouchData(
             enabled: false, // Tooltips siempre visibles
             touchTooltipData: BarTouchTooltipData(
               tooltipBgColor: Colors.white.withOpacity(0.9), // Fondo ligero
               tooltipBorder: BorderSide(color: Colors.grey.shade300, width: 1),
               tooltipRoundedRadius: 4,
-              tooltipPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               tooltipMargin: 8,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final monthName = monthNames[group.x.toInt()];
                 final data = monthlyData[monthName] ?? {};
                 String value = '';
                 Color color = Colors.black;
-                
+
                 switch (rodIndex) {
                   case 0:
                     value = '${data['promedioTtlReal'] ?? 0}';
@@ -751,34 +859,40 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
               },
             ),
           ),
-        barGroups: barGroups,
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
+          barGroups: barGroups,
+          titlesData: FlTitlesData(
+            leftTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
                 reservedSize: 30, // Espacio reservado para etiquetas
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < monthNames.length) {
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < monthNames.length) {
                     return Text(
-                      monthNames[value.toInt()], 
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                      monthNames[value.toInt()],
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w500),
                     );
-                }
-                return const Text('');
-              },
+                  }
+                  return const Text('');
+                },
+              ),
             ),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
+          borderData: FlBorderData(show: false),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             horizontalInterval: () {
               final maxValue = _getMaxValue(monthlyData, monthNames, false);
-              return maxValue > 100 ? (maxValue / 5).ceilToDouble() : 20.0; // Líneas de guía inteligentes
+              return maxValue > 100
+                  ? (maxValue / 5).ceilToDouble()
+                  : 20.0; // Líneas de guía inteligentes
             }(),
             getDrawingHorizontalLine: (value) => FlLine(
               color: Colors.grey.shade300,
@@ -790,9 +904,10 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     );
   }
 
-  double _getMaxValue(Map<String, Map<String, dynamic>> monthlyData, List<String> monthNames, bool isSumas) {
+  double _getMaxValue(Map<String, Map<String, dynamic>> monthlyData,
+      List<String> monthNames, bool isSumas) {
     double maxValue = 0;
-    
+
     for (final monthName in monthNames) {
       final data = monthlyData[monthName] ?? {};
       if (isSumas) {
@@ -817,7 +932,9 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
         }
       }
     }
-    
-    return maxValue > 0 ? maxValue * 1.2 : 10.0; // Añadir 20% de margen o valor por defecto
+
+    return maxValue > 0
+        ? maxValue * 1.2
+        : 10.0; // Añadir 20% de margen o valor por defecto
   }
-} 
+}

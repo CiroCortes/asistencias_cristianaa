@@ -12,57 +12,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _authService = AuthService();
-
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await _authService.signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-
-      // Cargar el usuario en el provider
-      await context.read<UserProvider>().loadUser();
-
-      if (mounted) {
-        // La navegación será manejada por AuthWrapper
-        // No es necesario navegar manualmente
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   Future<void> _signInWithGoogle() async {
     setState(() {
@@ -72,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await _authService.signInWithGoogle();
-      
+
       // Cargar el usuario en el provider
       await context.read<UserProvider>().loadUser();
 
@@ -82,8 +34,24 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString();
+
+        // Limpiar el mensaje de error para mostrar solo la parte útil
+        if (errorMessage.startsWith('Exception: ')) {
+          errorMessage = errorMessage.substring(11);
+        }
+
+        // Manejar errores específicos de Google Sign-In
+        if (errorMessage.contains('cancelado')) {
+          // No mostrar error si el usuario canceló voluntariamente
+          setState(() {
+            _errorMessage = null;
+          });
+          return;
+        }
+
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = errorMessage;
         });
       }
     } finally {
@@ -104,116 +72,92 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Logo de la aplicación
-              const SizedBox(height: 20.0),
-              const Center(
-                child: AppLogo(
-                  width: 120,
-                  height: 120,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Logo de la aplicación
+            const SizedBox(height: 60.0),
+            const Center(
+              child: AppLogo(
+                width: 120,
+                height: 120,
+              ),
+            ),
+            const SizedBox(height: 30.0),
+            const Text(
+              'IBBN Asistencia',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            const Text(
+              'Inicia sesión con tu cuenta de Google',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16.0,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 40.0),
+            if (_errorMessage != null)
+              Container(
+                padding: const EdgeInsets.all(12.0),
+                margin: const EdgeInsets.only(bottom: 20.0),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: TextStyle(color: Colors.red.shade900),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 20.0),
-              const Text(
-                'IBBN Asistencia',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+            ElevatedButton.icon(
+              onPressed: _isLoading ? null : _signInWithGoogle,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
                 ),
               ),
-              const SizedBox(height: 30.0),
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  margin: const EdgeInsets.only(bottom: 16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Colors.red.shade900),
-                  ),
-                ),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor ingrese su correo electrónico';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Por favor ingrese un correo electrónico válido';
-                  }
-                  return null;
-                },
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Image.network(
+                      'https://www.google.com/favicon.ico',
+                      height: 24.0,
+                    ),
+              label: _isLoading
+                  ? const Text('Iniciando sesión...')
+                  : const Text(
+                      'Iniciar Sesión con Google',
+                      style: TextStyle(fontSize: 16),
+                    ),
+            ),
+            const SizedBox(height: 30.0),
+            const Text(
+              'Al iniciar sesión, aceptas los términos y condiciones de uso.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.0,
+                color: Colors.grey,
               ),
-              const SizedBox(height: 16.0),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Contraseña',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor ingrese una contraseña';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24.0),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                ),
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Iniciar Sesión'),
-              ),
-              const SizedBox(height: 16.0),
-              const Text(
-                'O',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : _signInWithGoogle,
-                icon: Image.network(
-                  'https://www.google.com/favicon.ico',
-                  height: 24.0,
-                ),
-                label: const Text('Iniciar Sesión con Google'),
-              ),
-              const SizedBox(height: 16.0),
-              TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        Navigator.pushNamed(context, '/register');
-                      },
-                child: const Text('¿No tienes una cuenta? Regístrate aquí'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-} 
+}

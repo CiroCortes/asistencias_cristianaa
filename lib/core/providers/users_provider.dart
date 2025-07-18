@@ -70,18 +70,33 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteUser(String uid) async {
+  Future<void> deactivateUser(String uid) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      await _authService.deleteUser(uid);
-      await refreshUsers(); // Refresh the list after deletion
+      await _authService.deactivateUser(uid);
+      await refreshUsers(); // Refresh the list after deactivation
     } catch (e) {
-      _errorMessage = 'Error al eliminar el usuario: $e';
+      _errorMessage = 'Error al desactivar el usuario: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-} 
+
+  Future<void> activateUser(String uid) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.activateUser(uid);
+      await refreshUsers(); // Refresh the list after activation
+    } catch (e) {
+      _errorMessage = 'Error al activar el usuario: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}

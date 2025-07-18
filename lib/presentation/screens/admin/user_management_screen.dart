@@ -36,16 +36,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _showEditUserDialog([UserModel? userToEdit]) {
     bool isApproved = userToEdit?.isApproved ?? false;
     String selectedRole = userToEdit?.role ?? 'normal_user';
-    final TextEditingController displayNameController = TextEditingController(text: userToEdit?.displayName ?? '');
-    final TextEditingController emailController = TextEditingController(text: userToEdit?.email ?? '');
+    final TextEditingController displayNameController =
+        TextEditingController(text: userToEdit?.displayName ?? '');
+    final TextEditingController emailController =
+        TextEditingController(text: userToEdit?.email ?? '');
 
     final locationProvider = context.read<LocationProvider>();
     if (userToEdit?.sectorId != null) {
-      _selectedLocation = locationProvider.locations.firstWhereOrNull((loc) => loc.id == userToEdit!.sectorId);
+      _selectedLocation = locationProvider.locations
+          .firstWhereOrNull((loc) => loc.id == userToEdit!.sectorId);
       if (_selectedLocation != null) {
-        _selectedCommune = locationProvider.communes.firstWhereOrNull((comm) => comm.id == _selectedLocation!.communeId);
+        _selectedCommune = locationProvider.communes.firstWhereOrNull(
+            (comm) => comm.id == _selectedLocation!.communeId);
         if (_selectedCommune != null) {
-          _selectedCity = locationProvider.cities.firstWhereOrNull((city) => city.id == _selectedCommune!.cityId);
+          _selectedCity = locationProvider.cities
+              .firstWhereOrNull((city) => city.id == _selectedCommune!.cityId);
           if (_selectedCity != null) {
             locationProvider.loadCommunes(_selectedCity!.id).then((_) {
               if (_selectedCommune != null) {
@@ -70,20 +75,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             final usersProvider = dialogContext.read<UsersProvider>();
 
             return AlertDialog(
-              title: Text(userToEdit == null ? 'Aprobar/Editar Usuario' : 'Editar Usuario'),
+              title: Text(userToEdit == null
+                  ? 'Aprobar/Editar Usuario'
+                  : 'Editar Usuario'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
                       controller: displayNameController,
-                      decoration: const InputDecoration(labelText: 'Nombre de Usuario'),
+                      decoration:
+                          const InputDecoration(labelText: 'Nombre de Usuario'),
                       readOnly: userToEdit != null,
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: emailController,
-                      decoration: const InputDecoration(labelText: 'Correo Electrónico'),
+                      decoration: const InputDecoration(
+                          labelText: 'Correo Electrónico'),
                       readOnly: userToEdit != null,
                     ),
                     const SizedBox(height: 10),
@@ -91,8 +100,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       decoration: const InputDecoration(labelText: 'Rol'),
                       value: selectedRole,
                       items: const [
-                        DropdownMenuItem(value: 'admin', child: Text('Administrador')),
-                        DropdownMenuItem(value: 'normal_user', child: Text('Usuario Normal')),
+                        DropdownMenuItem(
+                            value: 'admin', child: Text('Administrador')),
+                        DropdownMenuItem(
+                            value: 'normal_user',
+                            child: Text('Usuario Normal')),
                       ],
                       onChanged: (String? newValue) {
                         setStateInDialog(() {
@@ -111,13 +123,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text('Asignar Ubicación (Sector)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      selectedRole == 'admin'
+                          ? 'Asignar Ubicación (Sector) - Opcional'
+                          : 'Asignar Ubicación (Sector) - Obligatorio',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<City>(
                       decoration: const InputDecoration(labelText: 'Ciudad'),
                       value: _selectedCity,
                       items: locationProvider.cities.map((city) {
-                        return DropdownMenuItem(value: city, child: Text(city.name));
+                        return DropdownMenuItem(
+                            value: city, child: Text(city.name));
                       }).toList(),
                       onChanged: (City? newValue) {
                         setStateInDialog(() {
@@ -135,32 +153,45 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       decoration: const InputDecoration(labelText: 'Comuna'),
                       value: _selectedCommune,
                       items: locationProvider.communes.map((commune) {
-                        return DropdownMenuItem(value: commune, child: Text(commune.name));
+                        return DropdownMenuItem(
+                            value: commune, child: Text(commune.name));
                       }).toList(),
-                      onChanged: (_selectedCity == null) ? null : (Commune? newValue) {
-                        setStateInDialog(() {
-                          _selectedCommune = newValue;
-                          _selectedLocation = null;
-                          if (newValue != null) {
-                            locationProvider.loadLocations(newValue.id);
-                          }
-                        });
-                      },
-                      hint: _selectedCity == null ? const Text('Selecciona una Ciudad primero') : null,
+                      onChanged: (_selectedCity == null)
+                          ? null
+                          : (Commune? newValue) {
+                              setStateInDialog(() {
+                                _selectedCommune = newValue;
+                                _selectedLocation = null;
+                                if (newValue != null) {
+                                  locationProvider.loadLocations(newValue.id);
+                                }
+                              });
+                            },
+                      hint: _selectedCity == null
+                          ? const Text('Selecciona una Ciudad primero')
+                          : null,
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<Location>(
-                      decoration: const InputDecoration(labelText: 'Localidad/Sector'),
+                      decoration:
+                          const InputDecoration(labelText: 'Localidad/Sector'),
                       value: _selectedLocation,
                       items: locationProvider.locations.map((location) {
-                        return DropdownMenuItem(value: location, child: Text(location.name));
+                        return DropdownMenuItem(
+                            value: location, child: Text(location.name));
                       }).toList(),
-                      onChanged: (_selectedCommune == null) ? null : (Location? newValue) {
-                        setStateInDialog(() {
-                          _selectedLocation = newValue;
-                        });
-                      },
-                      hint: _selectedCommune == null ? const Text('Selecciona una Comuna primero') : null,
+                      onChanged: (_selectedCommune == null)
+                          ? null
+                          : (Location? newValue) {
+                              setStateInDialog(() {
+                                _selectedLocation = newValue;
+                              });
+                            },
+                      hint: _selectedCommune == null
+                          ? const Text('Selecciona una Comuna primero')
+                          : (selectedRole == 'admin'
+                              ? const Text('Opcional para administradores')
+                              : null),
                     ),
                   ],
                 ),
@@ -172,11 +203,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () async {
-                    if (_selectedLocation == null) {
-                       ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          const SnackBar(content: Text('Por favor, selecciona una localidad/sector.')),
-                       );
-                       return;
+                    // Validar que usuarios normales tengan sector asignado
+                    if (selectedRole == 'normal_user' &&
+                        _selectedLocation == null) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'Los usuarios normales deben tener un sector asignado.')),
+                      );
+                      return;
+                    }
+
+                    // Para administradores, el sector es opcional
+                    String? sectorId;
+                    if (selectedRole == 'admin') {
+                      sectorId = _selectedLocation?.id; // Puede ser null
+                    } else {
+                      sectorId = _selectedLocation!
+                          .id; // Obligatorio para usuarios normales
                     }
 
                     final updatedUser = UserModel(
@@ -185,18 +229,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       displayName: displayNameController.text,
                       role: selectedRole,
                       isApproved: isApproved,
-                      sectorId: _selectedLocation!.id,
+                      sectorId: sectorId,
                     );
 
                     if (userToEdit == null) {
-                       ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
-                       );
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'La creación de nuevos usuarios es a través de la pantalla de registro.')),
+                      );
                     } else {
                       await usersProvider.updateUser(updatedUser);
-                       ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          const SnackBar(content: Text('Usuario actualizado exitosamente.')),
-                       );
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                            content: Text('Usuario actualizado exitosamente.')),
+                      );
                     }
                     Navigator.pop(dialogContext);
                   },
@@ -213,6 +260,86 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       _selectedCommune = null;
       _selectedLocation = null;
     });
+  }
+
+  Future<void> _showDeactivateUserDialog(UserModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Desactivar Usuario'),
+          content: Text(
+            '¿Estás seguro de que quieres desactivar a ${user.displayName}?\n\n'
+            'El usuario no podrá acceder a la aplicación, pero sus datos se mantendrán '
+            'para los reportes y KPIs.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              child: const Text('Desactivar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final usersProvider = context.read<UsersProvider>();
+      await usersProvider.deactivateUser(user.uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Usuario ${user.displayName} desactivado exitosamente.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showActivateUserDialog(UserModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Activar Usuario'),
+          content: Text(
+            '¿Estás seguro de que quieres activar a ${user.displayName}?\n\n'
+            'El usuario podrá acceder nuevamente a la aplicación.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Activar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final usersProvider = context.read<UsersProvider>();
+      await usersProvider.activateUser(user.uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Usuario ${user.displayName} activado exitosamente.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -262,7 +389,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       child: Text('Error: ${usersProvider.errorMessage}'));
                 }
 
-                List<UserModel> filteredUsers = usersProvider.users.where((user) {
+                List<UserModel> filteredUsers =
+                    usersProvider.users.where((user) {
                   if (_selectedFilter == UserFilter.pendingApproval) {
                     return !user.isApproved;
                   } else {
@@ -291,27 +419,60 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ? Text(user.displayName[0].toUpperCase())
                               : null,
                         ),
-                        title: Text(user.displayName),
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(user.displayName)),
+                            if (!user.isActive)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'DESACTIVADO',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         subtitle: Text(user.email),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                                user.role == 'admin' ? 'Admin' : 'Usuario'),
+                            Text(user.role == 'admin' ? 'Admin' : 'Usuario'),
                             const SizedBox(width: 8),
                             if (!user.isApproved)
                               IconButton(
-                                icon: const Icon(Icons.check_circle, color: Colors.green),
+                                icon: const Icon(Icons.check_circle,
+                                    color: Colors.green),
                                 onPressed: () async {
                                   _showEditUserDialog(user);
                                 },
                               ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                await usersProvider.deleteUser(user.uid);
-                              },
-                            ),
+                            if (user.isActive)
+                              IconButton(
+                                icon: const Icon(Icons.block,
+                                    color: Colors.orange),
+                                onPressed: () async {
+                                  await _showDeactivateUserDialog(user);
+                                },
+                                tooltip: 'Desactivar usuario',
+                              )
+                            else
+                              IconButton(
+                                icon: const Icon(Icons.check_circle,
+                                    color: Colors.green),
+                                onPressed: () async {
+                                  await _showActivateUserDialog(user);
+                                },
+                                tooltip: 'Activar usuario',
+                              ),
                           ],
                         ),
                         onTap: () {
@@ -330,11 +491,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         heroTag: "user_management_fab",
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('La creación de nuevos usuarios es a través de la pantalla de registro.')),
+            const SnackBar(
+                content: Text(
+                    'La creación de nuevos usuarios es a través de la pantalla de registro.')),
           );
         },
         child: const Icon(Icons.add),
       ),
     );
   }
-} 
+}

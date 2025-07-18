@@ -1,4 +1,4 @@
-package com.example.asistencias_app
+package com.ibborganitation.asistencias_app_2025
 
 import io.flutter.embedding.android.FlutterActivity
 

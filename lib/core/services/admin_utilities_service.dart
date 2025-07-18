@@ -5,34 +5,35 @@ class AdminUtilitiesService {
   static const String _adminUserId = 'test-admin-quilicura';
   static const String _quilicuraId = 'QsszuqTZk0QDKHN8iTj6';
   static const String _authorizedEmail = 'ciro.720@gmail.com';
-  
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Random _random = Random();
 
   // Validar acceso de usuario
   void _validateAccess(String? userEmail) {
     if (userEmail != _authorizedEmail) {
-      throw Exception('Acceso denegado: Usuario no autorizado para utilidades de administrador');
+      throw Exception(
+          'Acceso denegado: Usuario no autorizado para utilidades de administrador');
     }
   }
 
-  // Función para calcular número de semana
+  // Función para calcular número de semana (SISTEMA NO ISO)
   int _getWeekNumber(DateTime date) {
-    DateTime jan4 = DateTime(date.year, 1, 4);
-    int yearStartWeekday = jan4.weekday;
+    // SISTEMA NO ISO: Semana 1 empieza el 1 de enero, cada semana empieza el lunes
+    // Directriz del cliente: La Semana 1 del año comienza el 1 de enero
 
-    DateTime week1Start;
-    if (yearStartWeekday <= DateTime.thursday) {
-      week1Start = jan4.subtract(Duration(days: yearStartWeekday - DateTime.monday));
-    } else {
-      week1Start = jan4.add(Duration(days: DateTime.monday - yearStartWeekday + 7));
-    }
+    // La semana 1 empieza el 1 de enero, sin importar el día de la semana
+    DateTime week1Start = DateTime(date.year, 1, 1);
 
+    // Si la fecha es anterior al 1 de enero, usar el 1 de enero del año anterior
     if (date.isBefore(week1Start)) {
-      return _getWeekNumber(DateTime(date.year - 1, 12, 31));
+      week1Start = DateTime(date.year - 1, 1, 1);
     }
 
+    // Calcular días desde el 1 de enero
     int diffDays = date.difference(week1Start).inDays;
+
+    // El número de semana es (días / 7) + 1
     return (diffDays / 7).floor() + 1;
   }
 
@@ -42,66 +43,102 @@ class AdminUtilitiesService {
     String? userEmail,
   }) async {
     _validateAccess(userEmail);
-    
+
     try {
       onProgress('🔍 Paso 1: Verificando ruta Quilicura...');
-      
-      final quilicuraDoc = await _firestore.collection('communes').doc(_quilicuraId).get();
+
+      final quilicuraDoc =
+          await _firestore.collection('communes').doc(_quilicuraId).get();
       if (!quilicuraDoc.exists) {
         throw Exception('El documento Quilicura no existe en Firebase');
       }
-      
+
       onProgress('🔍 Paso 2: Buscando sectores de Quilicura...');
       final sectorsQuery = await _firestore
           .collection('locations')
           .where('communeId', isEqualTo: _quilicuraId)
           .get();
-      
+
       final sectors = sectorsQuery.docs;
       if (sectors.isEmpty) {
         throw Exception('No se encontraron sectores en Quilicura');
       }
-      
+
       onProgress('🔍 Paso 3: Verificando asistentes TEST existentes...');
-      
+
       // Verificar si ya existen asistentes TEST
       final existingAttendeesQuery = await _firestore
           .collection('attendees')
           .where('createdByUserId', isEqualTo: _adminUserId)
           .get();
-      
+
       if (existingAttendeesQuery.docs.isNotEmpty) {
-        throw Exception('Ya existen ${existingAttendeesQuery.docs.length} asistentes TEST. Use primero "Limpiar Datos" si desea recrearlos.');
+        throw Exception(
+            'Ya existen ${existingAttendeesQuery.docs.length} asistentes TEST. Use primero "Limpiar Datos" si desea recrearlos.');
       }
-      
+
       onProgress('👥 Paso 4: Creando asistentes TEST...');
-      
+
       final nombres = [
-        'Juan', 'María', 'Carlos', 'Ana', 'Pedro', 'Lucia', 'Miguel', 'Carmen',
-        'Francisco', 'Elena', 'Antonio', 'Rosa', 'Manuel', 'Isabel', 'José',
-        'Patricia', 'Javier', 'Teresa', 'Alejandro', 'Mónica'
+        'Juan',
+        'María',
+        'Carlos',
+        'Ana',
+        'Pedro',
+        'Lucia',
+        'Miguel',
+        'Carmen',
+        'Francisco',
+        'Elena',
+        'Antonio',
+        'Rosa',
+        'Manuel',
+        'Isabel',
+        'José',
+        'Patricia',
+        'Javier',
+        'Teresa',
+        'Alejandro',
+        'Mónica'
       ];
-      
+
       final apellidos = [
-        'García', 'Rodríguez', 'González', 'Fernández', 'López', 'Martínez',
-        'Sánchez', 'Pérez', 'Gómez', 'Martín', 'Jiménez', 'Ruiz', 'Hernández',
-        'Díaz', 'Moreno', 'Muñoz', 'Álvarez', 'Romero', 'Alonso', 'Gutierrez'
+        'García',
+        'Rodríguez',
+        'González',
+        'Fernández',
+        'López',
+        'Martínez',
+        'Sánchez',
+        'Pérez',
+        'Gómez',
+        'Martín',
+        'Jiménez',
+        'Ruiz',
+        'Hernández',
+        'Díaz',
+        'Moreno',
+        'Muñoz',
+        'Álvarez',
+        'Romero',
+        'Alonso',
+        'Gutierrez'
       ];
-      
+
       final tipos = ['member', 'listener'];
       int totalAttendees = 0;
-      
+
       for (final sector in sectors) {
         final sectorId = sector.id;
         final sectorName = sector.data()['name'] ?? 'Sector';
-        
+
         onProgress('👤 Creando asistentes para sector: $sectorName');
-        
+
         for (int i = 1; i <= 10; i++) {
           final nombre = nombres[_random.nextInt(nombres.length)];
           final apellido = apellidos[_random.nextInt(apellidos.length)];
           final tipo = tipos[_random.nextInt(tipos.length)];
-          
+
           final attendee = {
             'name': '$nombre TEST',
             'lastName': '$apellido $i',
@@ -112,19 +149,18 @@ class AdminUtilitiesService {
             'createdByUserId': _adminUserId,
             'isActive': true,
           };
-          
+
           await _firestore.collection('attendees').add(attendee);
           totalAttendees++;
         }
       }
-      
+
       onProgress('✅ Asistentes TEST creados exitosamente');
-      
+
       return {
         'attendees': totalAttendees,
         'sectors': sectors.length,
       };
-      
     } catch (e) {
       throw Exception('Error creando asistentes: $e');
     }
@@ -136,85 +172,115 @@ class AdminUtilitiesService {
     String? userEmail,
   }) async {
     _validateAccess(userEmail);
-    
+
     try {
       onProgress('🔍 Paso 1: Verificando asistentes TEST...');
-      
+
       // Verificar que existan asistentes TEST
       final attendeesQuery = await _firestore
           .collection('attendees')
           .where('createdByUserId', isEqualTo: _adminUserId)
           .get();
-      
+
       if (attendeesQuery.docs.isEmpty) {
-        throw Exception('No se encontraron asistentes TEST. Debe crear asistentes primero.');
+        throw Exception(
+            'No se encontraron asistentes TEST. Debe crear asistentes primero.');
       }
-      
+
       final allAttendees = attendeesQuery.docs;
       onProgress('✅ Encontrados ${allAttendees.length} asistentes TEST');
-      
+
       onProgress('🔍 Paso 2: Verificando registros existentes...');
-      
+
       // Verificar registros existentes para jun-jul 2025
       final existingRecordsQuery = await _firestore
           .collection('attendanceRecords')
           .where('recordedByUserId', isEqualTo: _adminUserId)
           .where('year', isEqualTo: 2025)
           .get();
-      
+
       final existingJunJulRecords = existingRecordsQuery.docs.where((doc) {
         final data = doc.data();
         final date = (data['date'] as Timestamp).toDate();
         return (date.month == 6 || date.month == 7) && date.year == 2025;
       }).length;
-      
+
       if (existingJunJulRecords > 0) {
-        throw Exception('Ya existen $existingJunJulRecords registros para jun-jul 2025. Use "Limpiar Datos" si desea recrearlos.');
+        throw Exception(
+            'Ya existen $existingJunJulRecords registros para jun-jul 2025. Use "Limpiar Datos" si desea recrearlos.');
       }
-      
+
       onProgress('📅 Paso 3: Generando fechas de reuniones...');
-      
+
       // Fechas específicas para las 16 semanas de jun-jul 2025
       final meetingDates = <DateTime>[
         // JUNIO 2025 (4 semanas completas + días extra)
-        DateTime(2025, 6, 4, 19, 30), DateTime(2025, 6, 11, 19, 30), DateTime(2025, 6, 18, 19, 30), DateTime(2025, 6, 25, 19, 30), // Miércoles
-        DateTime(2025, 6, 7, 10, 0), DateTime(2025, 6, 14, 10, 0), DateTime(2025, 6, 21, 10, 0), DateTime(2025, 6, 28, 10, 0), // Sábados
-        DateTime(2025, 6, 1, 10, 0), DateTime(2025, 6, 8, 10, 0), DateTime(2025, 6, 15, 10, 0), DateTime(2025, 6, 22, 10, 0), DateTime(2025, 6, 29, 10, 0), // Domingos AM
-        DateTime(2025, 6, 1, 16, 0), DateTime(2025, 6, 8, 16, 0), DateTime(2025, 6, 15, 16, 0), DateTime(2025, 6, 22, 16, 0), DateTime(2025, 6, 29, 16, 0), // Domingos PM
-        
+        DateTime(2025, 6, 4, 19, 30),
+        DateTime(2025, 6, 11, 19, 30),
+        DateTime(2025, 6, 18, 19, 30),
+        DateTime(2025, 6, 25, 19, 30), // Miércoles
+        DateTime(2025, 6, 7, 10, 0), DateTime(2025, 6, 14, 10, 0),
+        DateTime(2025, 6, 21, 10, 0), DateTime(2025, 6, 28, 10, 0), // Sábados
+        DateTime(2025, 6, 1, 10, 0),
+        DateTime(2025, 6, 8, 10, 0),
+        DateTime(2025, 6, 15, 10, 0),
+        DateTime(2025, 6, 22, 10, 0),
+        DateTime(2025, 6, 29, 10, 0), // Domingos AM
+        DateTime(2025, 6, 1, 16, 0),
+        DateTime(2025, 6, 8, 16, 0),
+        DateTime(2025, 6, 15, 16, 0),
+        DateTime(2025, 6, 22, 16, 0),
+        DateTime(2025, 6, 29, 16, 0), // Domingos PM
+
         // JULIO 2025 (4 semanas completas + días extra)
-        DateTime(2025, 7, 2, 19, 30), DateTime(2025, 7, 9, 19, 30), DateTime(2025, 7, 16, 19, 30), DateTime(2025, 7, 23, 19, 30), DateTime(2025, 7, 30, 19, 30), // Miércoles
-        DateTime(2025, 7, 5, 10, 0), DateTime(2025, 7, 12, 10, 0), DateTime(2025, 7, 19, 10, 0), DateTime(2025, 7, 26, 10, 0), // Sábados
-        DateTime(2025, 7, 6, 10, 0), DateTime(2025, 7, 13, 10, 0), DateTime(2025, 7, 20, 10, 0), DateTime(2025, 7, 27, 10, 0), // Domingos AM
-        DateTime(2025, 7, 6, 16, 0), DateTime(2025, 7, 13, 16, 0), DateTime(2025, 7, 20, 16, 0), DateTime(2025, 7, 27, 16, 0), // Domingos PM
+        DateTime(2025, 7, 2, 19, 30),
+        DateTime(2025, 7, 9, 19, 30),
+        DateTime(2025, 7, 16, 19, 30),
+        DateTime(2025, 7, 23, 19, 30),
+        DateTime(2025, 7, 30, 19, 30), // Miércoles
+        DateTime(2025, 7, 5, 10, 0), DateTime(2025, 7, 12, 10, 0),
+        DateTime(2025, 7, 19, 10, 0), DateTime(2025, 7, 26, 10, 0), // Sábados
+        DateTime(2025, 7, 6, 10, 0),
+        DateTime(2025, 7, 13, 10, 0),
+        DateTime(2025, 7, 20, 10, 0),
+        DateTime(2025, 7, 27, 10, 0), // Domingos AM
+        DateTime(2025, 7, 6, 16, 0),
+        DateTime(2025, 7, 13, 16, 0),
+        DateTime(2025, 7, 20, 16, 0),
+        DateTime(2025, 7, 27, 16, 0), // Domingos PM
       ];
-      
+
       onProgress('📊 Fechas programadas: ${meetingDates.length} reuniones');
-      
+
       // Obtener sectores para validación
       final sectorsQuery = await _firestore
           .collection('locations')
           .where('communeId', isEqualTo: _quilicuraId)
           .get();
       final sectors = sectorsQuery.docs;
-      
+
       // VALIDACIÓN DE SEGURIDAD: Calcular registros máximos esperados
-      final maxExpectedRecords = sectors.length * meetingDates.length * 10; // sectores × fechas × max_asistentes_por_sector
+      final maxExpectedRecords = sectors.length *
+          meetingDates.length *
+          10; // sectores × fechas × max_asistentes_por_sector
       onProgress('🛡️ Máximo registros esperados: $maxExpectedRecords');
-      
+
       onProgress('📝 Paso 4: Generando registros de asistencia...');
-      
+
       int totalRecords = 0;
       int sectorIndex = 0;
-      
+
       for (final sector in sectors) {
         sectorIndex++;
         final sectorId = sector.id;
         final sectorName = sector.data()['name'] ?? 'Sector';
-        final sectorAttendees = allAttendees.where((doc) => doc.data()['sectorId'] == sectorId).toList();
-        
-        onProgress('📍 Sector $sectorIndex/${sectors.length}: $sectorName (${sectorAttendees.length} asistentes)');
-        
+        final sectorAttendees = allAttendees
+            .where((doc) => doc.data()['sectorId'] == sectorId)
+            .toList();
+
+        onProgress(
+            '📍 Sector $sectorIndex/${sectors.length}: $sectorName (${sectorAttendees.length} asistentes)');
+
         for (final date in meetingDates) {
           String meetingType;
           if (date.weekday == DateTime.wednesday) {
@@ -226,15 +292,20 @@ class AdminUtilitiesService {
           } else {
             meetingType = 'Reunión Domingo PM';
           }
-          
+
           // Simular asistencia realista (60-85%)
           final attendanceRate = 0.6 + (_random.nextDouble() * 0.25);
-          final numAttendees = (sectorAttendees.length * attendanceRate).round();
-          final shuffledAttendees = List.from(sectorAttendees)..shuffle(_random);
-          final attendedIds = shuffledAttendees.take(numAttendees).map((doc) => doc.id).toList();
+          final numAttendees =
+              (sectorAttendees.length * attendanceRate).round();
+          final shuffledAttendees = List.from(sectorAttendees)
+            ..shuffle(_random);
+          final attendedIds = shuffledAttendees
+              .take(numAttendees)
+              .map((doc) => doc.id)
+              .toList();
           final visitorCount = _random.nextInt(6);
           final weekNumber = _getWeekNumber(date);
-          
+
           final attendanceRecord = {
             'sectorId': sectorId,
             'date': Timestamp.fromDate(date),
@@ -245,34 +316,37 @@ class AdminUtilitiesService {
             'visitorCount': visitorCount,
             'recordedByUserId': _adminUserId,
           };
-          
-          await _firestore.collection('attendanceRecords').add(attendanceRecord);
+
+          await _firestore
+              .collection('attendanceRecords')
+              .add(attendanceRecord);
           totalRecords++;
-          
+
           // VALIDACIÓN DE SEGURIDAD: No exceder el máximo
           if (totalRecords > maxExpectedRecords) {
-            throw Exception('SEGURIDAD: Se excedió el máximo de registros esperados ($maxExpectedRecords). Deteniendo operación.');
+            throw Exception(
+                'SEGURIDAD: Se excedió el máximo de registros esperados ($maxExpectedRecords). Deteniendo operación.');
           }
         }
       }
-      
+
       onProgress('✅ Registros de asistencia creados exitosamente');
-      
+
       // Validación final
       final expectedRecordsPerSector = meetingDates.length;
       final totalExpectedRecords = sectors.length * expectedRecordsPerSector;
-      
+
       if (totalRecords != totalExpectedRecords) {
-        onProgress('⚠️ ADVERTENCIA: Se crearon $totalRecords registros, esperados $totalExpectedRecords');
+        onProgress(
+            '⚠️ ADVERTENCIA: Se crearon $totalRecords registros, esperados $totalExpectedRecords');
       }
-      
+
       return {
         'records': totalRecords,
         'sectors': sectors.length,
         'dates': meetingDates.length,
         'expectedRecords': totalExpectedRecords,
       };
-      
     } catch (e) {
       throw Exception('Error creando registros: $e');
     }
@@ -281,10 +355,10 @@ class AdminUtilitiesService {
   // Ejemplo de función para análisis de datos
   Future<Map<String, int>> analyzeData({String? userEmail}) async {
     _validateAccess(userEmail);
-    
+
     final records = await _firestore.collection('attendanceRecords').get();
     final attendees = await _firestore.collection('attendees').get();
-    
+
     return {
       'totalRecords': records.docs.length,
       'totalAttendees': attendees.docs.length,
@@ -298,21 +372,22 @@ class AdminUtilitiesService {
     String? userEmail,
   }) async {
     _validateAccess(userEmail);
-    
+
     try {
       int deletedRecords = 0;
       int deletedAttendees = 0;
       int deletedMeetings = 0;
-      
+
       if (cleanupType == 'analyze') {
         return await analyzeData(userEmail: userEmail);
       }
-      
+
       // Limpieza de registros de asistencia
       onProgress('🗑️ Paso 1: Limpiando registros de asistencia...');
-      
+
       if (cleanupType == 'full') {
-        final recordsQuery = await _firestore.collection('attendanceRecords').get();
+        final recordsQuery =
+            await _firestore.collection('attendanceRecords').get();
         for (final doc in recordsQuery.docs) {
           await doc.reference.delete();
           deletedRecords++;
@@ -322,31 +397,32 @@ class AdminUtilitiesService {
             .collection('attendanceRecords')
             .where('recordedByUserId', isEqualTo: _adminUserId)
             .get();
-        
+
         final testRecords2 = await _firestore
             .collection('attendanceRecords')
             .where('createdByUserId', isEqualTo: _adminUserId)
             .get();
-        
-        final allTestRecords = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+        final allTestRecords =
+            <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
         for (final doc in testRecords1.docs) {
           allTestRecords[doc.id] = doc;
         }
         for (final doc in testRecords2.docs) {
           allTestRecords[doc.id] = doc;
         }
-        
+
         for (final doc in allTestRecords.values) {
           await doc.reference.delete();
           deletedRecords++;
         }
       }
-      
+
       onProgress('✅ Eliminados $deletedRecords registros de asistencia');
-      
+
       // Limpieza de asistentes
       onProgress('👥 Paso 2: Limpiando asistentes...');
-      
+
       if (cleanupType == 'full') {
         final allAttendees = await _firestore.collection('attendees').get();
         for (final doc in allAttendees.docs) {
@@ -358,37 +434,36 @@ class AdminUtilitiesService {
             .collection('attendees')
             .where('createdByUserId', isEqualTo: _adminUserId)
             .get();
-        
+
         for (final doc in testAttendees.docs) {
           await doc.reference.delete();
           deletedAttendees++;
         }
       }
-      
+
       onProgress('✅ Eliminados $deletedAttendees asistentes');
-      
+
       // Limpieza de meetings TEST
       onProgress('📅 Paso 3: Limpiando meetings recurrentes TEST...');
-      
+
       final testMeetings = await _firestore
           .collection('recurring_meetings')
           .where('createdByUserId', isEqualTo: _adminUserId)
           .get();
-      
+
       for (final doc in testMeetings.docs) {
         await doc.reference.delete();
         deletedMeetings++;
       }
-      
+
       onProgress('✅ Eliminados $deletedMeetings meetings TEST');
       onProgress('🎉 Limpieza completada');
-      
+
       return {
         'deletedRecords': deletedRecords,
         'deletedAttendees': deletedAttendees,
         'deletedMeetings': deletedMeetings,
       };
-      
     } catch (e) {
       throw Exception('Error durante limpieza: $e');
     }
@@ -401,26 +476,26 @@ class AdminUtilitiesService {
     int? specificWeekNumber,
   }) async {
     _validateAccess(userEmail);
-    
+
     try {
       onProgress('🔍 Iniciando análisis de discrepancias de asistencia...');
-      
+
       final now = DateTime.now();
       final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
       final currentYear = now.year;
-      
+
       onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
-      
+
       // Obtener TODOS los registros de la semana específica
       final allRecordsQuery = await _firestore
           .collection('attendanceRecords')
           .where('weekNumber', isEqualTo: targetWeek)
           .where('year', isEqualTo: currentYear)
           .get();
-      
+
       final allRecords = allRecordsQuery.docs;
       onProgress('📊 Total registros encontrados: ${allRecords.length}');
-      
+
       if (allRecords.isEmpty) {
         return {
           'error': 'No se encontraron registros para la semana $targetWeek',
@@ -430,11 +505,11 @@ class AdminUtilitiesService {
           'discrepancy': 0,
         };
       }
-      
+
       // Analizar registros por días
       int totalAttendance = 0;
       int correctDayAttendance = 0;
-      
+
       final correctDayRecords = <Map<String, dynamic>>[];
       final incorrectDayRecords = <Map<String, dynamic>>[];
       final dayBreakdown = <String, int>{
@@ -447,16 +522,16 @@ class AdminUtilitiesService {
         'Sunday': 0,
       };
       final hourBreakdown = <int, int>{};
-      
+
       for (final doc in allRecords) {
         final data = doc.data();
         final date = (data['date'] as Timestamp).toDate();
-                 final attendedCount = (data['attendedAttendeeIds'] as List).length;
-         final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+        final attendedCount = (data['attendedAttendeeIds'] as List).length;
+        final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
         final recordTotal = attendedCount + visitorCount;
-        
+
         totalAttendance += recordTotal;
-        
+
         // Información del registro
         final recordInfo = {
           'id': doc.id,
@@ -471,19 +546,20 @@ class AdminUtilitiesService {
           'total': recordTotal,
           'sectorId': data['sectorId'] ?? 'Sin sector',
         };
-        
+
         // Contar por día de la semana
         final dayName = _getWeekdayName(date.weekday);
         dayBreakdown[dayName] = (dayBreakdown[dayName] ?? 0) + recordTotal;
-        
+
         // Contar por hora
-        hourBreakdown[date.hour] = (hourBreakdown[date.hour] ?? 0) + recordTotal;
-        
+        hourBreakdown[date.hour] =
+            (hourBreakdown[date.hour] ?? 0) + recordTotal;
+
         // Verificar si es un día "correcto" (miércoles, sábado, domingo)
         final isCorrectDay = date.weekday == DateTime.wednesday ||
-                            date.weekday == DateTime.saturday ||
-                            date.weekday == DateTime.sunday;
-        
+            date.weekday == DateTime.saturday ||
+            date.weekday == DateTime.sunday;
+
         if (isCorrectDay) {
           correctDayAttendance += recordTotal;
           correctDayRecords.add(recordInfo);
@@ -491,9 +567,9 @@ class AdminUtilitiesService {
           incorrectDayRecords.add(recordInfo);
         }
       }
-      
+
       final discrepancy = totalAttendance - correctDayAttendance;
-      
+
       // Logging detallado
       onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       onProgress('📊 RESUMEN DE ANÁLISIS:');
@@ -502,50 +578,61 @@ class AdminUtilitiesService {
       onProgress('   ❌ Discrepancia: $discrepancy personas');
       onProgress('   📋 Registros totales: ${allRecords.length}');
       onProgress('   ✅ Registros días correctos: ${correctDayRecords.length}');
-      onProgress('   ❌ Registros días incorrectos: ${incorrectDayRecords.length}');
-      
+      onProgress(
+          '   ❌ Registros días incorrectos: ${incorrectDayRecords.length}');
+
       onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       onProgress('📅 ASISTENCIA POR DÍA DE LA SEMANA:');
       for (final entry in dayBreakdown.entries) {
         if (entry.value > 0) {
-          final emoji = entry.key == 'Wednesday' ? '✅' : 
-                       entry.key == 'Saturday' ? '✅' : 
-                       entry.key == 'Sunday' ? '✅' : '❌';
+          final emoji = entry.key == 'Wednesday'
+              ? '✅'
+              : entry.key == 'Saturday'
+                  ? '✅'
+                  : entry.key == 'Sunday'
+                      ? '✅'
+                      : '❌';
           onProgress('   $emoji ${entry.key}: ${entry.value} personas');
         }
       }
-      
+
       if (hourBreakdown.isNotEmpty) {
         onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         onProgress('🕐 ASISTENCIA POR HORA:');
         final sortedHours = hourBreakdown.entries.toList()
           ..sort((a, b) => a.key.compareTo(b.key));
         for (final entry in sortedHours) {
-          onProgress('   ${entry.key.toString().padLeft(2, '0')}:00 → ${entry.value} personas');
+          onProgress(
+              '   ${entry.key.toString().padLeft(2, '0')}:00 → ${entry.value} personas');
         }
       }
-      
+
       if (incorrectDayRecords.isNotEmpty) {
         onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         onProgress('❌ REGISTROS EN DÍAS INCORRECTOS:');
         for (final record in incorrectDayRecords) {
           final date = record['date'] as DateTime;
-          onProgress('   🗓️ ${date.day}/${date.month}/${date.year} ${record['weekdayName']} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
+          onProgress(
+              '   🗓️ ${date.day}/${date.month}/${date.year} ${record['weekdayName']} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
           onProgress('      📍 Sector: ${record['sectorId']}');
-          onProgress('      👥 ${record['attendees']} asistentes + ${record['visitors']} visitas = ${record['total']} total');
+          onProgress(
+              '      👥 ${record['attendees']} asistentes + ${record['visitors']} visitas = ${record['total']} total');
           onProgress('      📝 Tipo: ${record['meetingType']}');
         }
       }
-      
+
       onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       onProgress('🎯 CONCLUSIÓN:');
       if (discrepancy == 0) {
-        onProgress('   ✅ No hay discrepancias. Todos los registros están en días correctos.');
+        onProgress(
+            '   ✅ No hay discrepancias. Todos los registros están en días correctos.');
       } else {
-        onProgress('   ⚠️ Se encontraron $discrepancy personas en días incorrectos.');
-        onProgress('   💡 Estos registros deberían estar en miércoles, sábado o domingo.');
+        onProgress(
+            '   ⚠️ Se encontraron $discrepancy personas en días incorrectos.');
+        onProgress(
+            '   💡 Estos registros deberían estar en miércoles, sábado o domingo.');
       }
-      
+
       return {
         'weekNumber': targetWeek,
         'year': currentYear,
@@ -559,12 +646,11 @@ class AdminUtilitiesService {
         'hourBreakdown': hourBreakdown,
         'incorrectRecordsDetails': incorrectDayRecords,
       };
-      
     } catch (e) {
       throw Exception('Error analizando discrepancias: $e');
     }
   }
-  
+
   // Función auxiliar para obtener nombre del día de la semana
   String _getWeekdayName(int weekday) {
     switch (weekday) {
@@ -595,27 +681,28 @@ class AdminUtilitiesService {
     bool dryRun = true, // Por defecto solo simula, no elimina
   }) async {
     _validateAccess(userEmail);
-    
+
     try {
       onProgress('🧹 Iniciando limpieza de registros en días incorrectos...');
-      onProgress('${dryRun ? '🔍 MODO SIMULACIÓN' : '⚠️ MODO ELIMINACIÓN REAL'}');
-      
+      onProgress(
+          '${dryRun ? '🔍 MODO SIMULACIÓN' : '⚠️ MODO ELIMINACIÓN REAL'}');
+
       final now = DateTime.now();
       final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
       final currentYear = now.year;
-      
+
       onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
-      
+
       // Obtener TODOS los registros de la semana específica
       final allRecordsQuery = await _firestore
           .collection('attendanceRecords')
           .where('weekNumber', isEqualTo: targetWeek)
           .where('year', isEqualTo: currentYear)
           .get();
-      
+
       final allRecords = allRecordsQuery.docs;
       onProgress('📊 Total registros encontrados: ${allRecords.length}');
-      
+
       if (allRecords.isEmpty) {
         return {
           'error': 'No se encontraron registros para la semana $targetWeek',
@@ -625,61 +712,63 @@ class AdminUtilitiesService {
           'deletedAttendance': 0,
         };
       }
-      
+
       // Identificar registros en días incorrectos
       final incorrectDayRecords = <DocumentSnapshot>[];
       int totalIncorrectAttendance = 0;
-      
+
       for (final doc in allRecords) {
         final data = doc.data();
         final date = (data['date'] as Timestamp).toDate();
         final attendedCount = (data['attendedAttendeeIds'] as List).length;
         final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
         final recordTotal = attendedCount + visitorCount;
-        
+
         // Verificar si es un día "incorrecto" (lunes, martes, jueves, viernes)
         final isIncorrectDay = date.weekday == DateTime.monday ||
-                               date.weekday == DateTime.tuesday ||
-                               date.weekday == DateTime.thursday ||
-                               date.weekday == DateTime.friday;
-        
+            date.weekday == DateTime.tuesday ||
+            date.weekday == DateTime.thursday ||
+            date.weekday == DateTime.friday;
+
         if (isIncorrectDay) {
           incorrectDayRecords.add(doc);
           totalIncorrectAttendance += recordTotal;
         }
       }
-      
+
       onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       onProgress('❌ REGISTROS EN DÍAS INCORRECTOS ENCONTRADOS:');
       onProgress('   📋 Total registros: ${incorrectDayRecords.length}');
       onProgress('   👥 Total asistencia: $totalIncorrectAttendance personas');
-      
+
       if (incorrectDayRecords.isNotEmpty) {
         onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         onProgress('📝 DETALLES DE REGISTROS A ELIMINAR:');
-        
-                 for (final doc in incorrectDayRecords) {
-           final data = doc.data() as Map<String, dynamic>?;
-           if (data == null) continue;
-           
-           final date = (data['date'] as Timestamp).toDate();
-           final attendedCount = (data['attendedAttendeeIds'] as List).length;
-           final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
-           final recordTotal = attendedCount + visitorCount;
-           final meetingType = data['meetingType'] ?? 'Sin tipo';
-           final sectorId = data['sectorId'] ?? 'Sin sector';
-          
-          onProgress('   🗓️ ${date.day}/${date.month}/${date.year} ${_getWeekdayName(date.weekday)} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
+
+        for (final doc in incorrectDayRecords) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data == null) continue;
+
+          final date = (data['date'] as Timestamp).toDate();
+          final attendedCount = (data['attendedAttendeeIds'] as List).length;
+          final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+          final recordTotal = attendedCount + visitorCount;
+          final meetingType = data['meetingType'] ?? 'Sin tipo';
+          final sectorId = data['sectorId'] ?? 'Sin sector';
+
+          onProgress(
+              '   🗓️ ${date.day}/${date.month}/${date.year} ${_getWeekdayName(date.weekday)} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
           onProgress('      📍 Sector: $sectorId');
-          onProgress('      👥 $attendedCount asistentes + $visitorCount visitas = $recordTotal total');
+          onProgress(
+              '      👥 $attendedCount asistentes + $visitorCount visitas = $recordTotal total');
           onProgress('      📝 Tipo: $meetingType');
           onProgress('      🆔 ID: ${doc.id}');
         }
-        
+
         if (!dryRun) {
           onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           onProgress('⚠️ ELIMINANDO REGISTROS...');
-          
+
           int deletedCount = 0;
           for (final doc in incorrectDayRecords) {
             try {
@@ -690,12 +779,13 @@ class AdminUtilitiesService {
               onProgress('   ❌ Error eliminando ${doc.id}: $e');
             }
           }
-          
+
           onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           onProgress('🎉 LIMPIEZA COMPLETADA:');
           onProgress('   ✅ Registros eliminados: $deletedCount');
-          onProgress('   👥 Asistencia eliminada: $totalIncorrectAttendance personas');
-          
+          onProgress(
+              '   👥 Asistencia eliminada: $totalIncorrectAttendance personas');
+
           return {
             'weekNumber': targetWeek,
             'year': currentYear,
@@ -708,10 +798,12 @@ class AdminUtilitiesService {
         } else {
           onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           onProgress('🔍 SIMULACIÓN COMPLETADA:');
-          onProgress('   📋 Registros que se eliminarían: ${incorrectDayRecords.length}');
-          onProgress('   👥 Asistencia que se eliminaría: $totalIncorrectAttendance personas');
+          onProgress(
+              '   📋 Registros que se eliminarían: ${incorrectDayRecords.length}');
+          onProgress(
+              '   👥 Asistencia que se eliminaría: $totalIncorrectAttendance personas');
           onProgress('   💡 Ejecuta sin dryRun=true para eliminar realmente');
-          
+
           return {
             'weekNumber': targetWeek,
             'year': currentYear,
@@ -725,8 +817,9 @@ class AdminUtilitiesService {
       } else {
         onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         onProgress('✅ No se encontraron registros en días incorrectos');
-        onProgress('   Todos los registros están en días válidos (miércoles, sábado, domingo)');
-        
+        onProgress(
+            '   Todos los registros están en días válidos (miércoles, sábado, domingo)');
+
         return {
           'weekNumber': targetWeek,
           'year': currentYear,
@@ -737,9 +830,8 @@ class AdminUtilitiesService {
           'dryRun': dryRun,
         };
       }
-      
     } catch (e) {
       throw Exception('Error durante limpieza de registros incorrectos: $e');
     }
   }
-} 
+}

@@ -132,9 +132,20 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
   }
 
   int _getWeekNumber(DateTime date) {
-    final firstDayOfYear = DateTime(date.year, 1, 1);
-    final daysSinceFirstDay = date.difference(firstDayOfYear).inDays;
-    return ((daysSinceFirstDay + firstDayOfYear.weekday - 1) / 7).ceil();
+    // SISTEMA NO ISO: Usar la misma lógica que date_utils.dart
+    // La semana 1 empieza el 1 de enero, sin importar el día de la semana
+    DateTime week1Start = DateTime(date.year, 1, 1);
+
+    // Si la fecha es anterior al 1 de enero, usar el 1 de enero del año anterior
+    if (date.isBefore(week1Start)) {
+      week1Start = DateTime(date.year - 1, 1, 1);
+    }
+
+    // Calcular días desde el 1 de enero
+    int diffDays = date.difference(week1Start).inDays;
+
+    // El número de semana es (días / 7) + 1
+    return (diffDays / 7).floor() + 1;
   }
 
   List<String> get _months => [

@@ -50,11 +50,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBAc61YTUCGPnjMxTGLNU66Lu1IsGyAE3E',
-    appId: '1:598309562855:android:6327c5c1b67118e7853542',
-    messagingSenderId: '598309562855',
-    projectId: 'asistenciasappcristiana',
-    storageBucket: 'asistenciasappcristiana.firebasestorage.app',
+    apiKey: 'AIzaSyBe4SnzbcFEOwUV6_lk-0oKSViIleH--oA',
+    appId: '1:437948672200:android:1f2313821ba1f2734addfd',
+    messagingSenderId: '437948672200',
+    projectId: 'asistenciasappcristiana-9385b',
+    storageBucket: 'asistenciasappcristiana-9385b.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
