@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/core/providers/meeting_provider.dart';
-import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/data/models/recurring_meeting_model.dart';
-import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:asistencias_app/core/constants/app_constants.dart'; // Para los días de la semana
 
@@ -11,27 +9,23 @@ class CreateRecurringMeetingScreen extends StatefulWidget {
   const CreateRecurringMeetingScreen({super.key});
 
   @override
-  State<CreateRecurringMeetingScreen> createState() => _CreateRecurringMeetingScreenState();
+  State<CreateRecurringMeetingScreen> createState() =>
+      _CreateRecurringMeetingScreenState();
 }
 
-class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScreen> {
+class _CreateRecurringMeetingScreenState
+    extends State<CreateRecurringMeetingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _timeController = TextEditingController();
 
   final List<String> _selectedDays = [];
-  City? _selectedCity;
-  Commune? _selectedCommune;
-  Location? _selectedLocation;
 
   TimeOfDay? _selectedTime;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().loadCities();
-    });
   }
 
   @override
@@ -68,12 +62,6 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
       );
       return;
     }
-    if (_selectedLocation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor selecciona una localidad.')),
-      );
-      return;
-    }
 
     final meetingProvider = context.read<MeetingProvider>();
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -89,7 +77,8 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
       name: _nameController.text,
       daysOfWeek: _selectedDays,
       time: _timeController.text,
-      locationId: _selectedLocation!.id,
+      locationId: null, // Siempre null para reuniones generales
+      meetingType: _nameController.text, // Usar el nombre como meetingType
       createdByUserId: currentUser.uid,
       createdAt: DateTime.now(),
     );
@@ -98,7 +87,8 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
 
     if (mounted && meetingProvider.errorMessage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reunión recurrente creada exitosamente.')),
+        const SnackBar(
+            content: Text('Reunión recurrente creada exitosamente.')),
       );
       Navigator.pop(context);
     } else if (mounted) {
@@ -110,7 +100,6 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
 
   @override
   Widget build(BuildContext context) {
-    final locationProvider = context.watch<LocationProvider>();
     final meetingProvider = context.watch<MeetingProvider>();
 
     return Scaffold(
@@ -138,7 +127,8 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
                 },
               ),
               const SizedBox(height: 16),
-              const Text('Días de la Semana:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Días de la Semana:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8.0,
@@ -176,87 +166,18 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              const Text('Ubicación:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<City>(
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  border: OutlineInputBorder(),
-                ),
-                value: _selectedCity,
-                items: locationProvider.cities.map((city) {
-                  return DropdownMenuItem(value: city, child: Text(city.name));
-                }).toList(),
-                onChanged: (City? newValue) {
-                  setState(() {
-                    _selectedCity = newValue;
-                    _selectedCommune = null;
-                    _selectedLocation = null;
-                  });
-                  if (newValue != null) {
-                    locationProvider.loadCommunes(newValue.id);
-                  }
-                },
-                validator: (value) {
-                  if (value == null) return 'Selecciona una ciudad';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<Commune>(
-                decoration: const InputDecoration(
-                  labelText: 'Comuna',
-                  border: OutlineInputBorder(),
-                ),
-                value: _selectedCommune,
-                items: locationProvider.communes.map((commune) {
-                  return DropdownMenuItem(value: commune, child: Text(commune.name));
-                }).toList(),
-                onChanged: (Commune? newValue) {
-                  setState(() {
-                    _selectedCommune = newValue;
-                    _selectedLocation = null;
-                  });
-                  if (newValue != null) {
-                    locationProvider.loadLocations(newValue.id);
-                  }
-                },
-                validator: (value) {
-                  if (value == null) return 'Selecciona una comuna';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<Location>(
-                decoration: const InputDecoration(
-                  labelText: 'Localidad',
-                  border: OutlineInputBorder(),
-                ),
-                value: _selectedLocation,
-                items: locationProvider.locations.map((location) {
-                  return DropdownMenuItem(value: location, child: Text(location.name));
-                }).toList(),
-                onChanged: (Location? newValue) {
-                  setState(() {
-                    _selectedLocation = newValue;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) return 'Selecciona un Sector';
-                  return null;
-                },
-              ),
               const SizedBox(height: 24),
               Center(
                 child: ElevatedButton(
                   onPressed: _createMeeting,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 15),
                   ),
                   child: meetingProvider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Crear Reunión', style: TextStyle(fontSize: 18)),
+                      : const Text('Crear Reunión',
+                          style: TextStyle(fontSize: 18)),
                 ),
               ),
             ],
@@ -265,4 +186,4 @@ class _CreateRecurringMeetingScreenState extends State<CreateRecurringMeetingScr
       ),
     );
   }
-} 
+}
