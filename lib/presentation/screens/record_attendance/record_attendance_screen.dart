@@ -441,17 +441,21 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
     final currentUser = userProvider.user;
 
     // --- Lógica de asistentes filtrados ---
+    // IMPORTANTE: Solo mostrar asistentes ACTIVOS para registro de asistencia
+    // Los asistentes desactivados no deben aparecer en las opciones de selección
     List<AttendeeModel> filteredAttendees = [];
     if (currentUser != null) {
       if (userProvider.isAdmin) {
         if (_selectedLocation != null) {
           filteredAttendees = attendeeProvider.attendees
-              .where((att) => att.sectorId == _selectedLocation!.id)
+              .where((att) =>
+                  att.sectorId == _selectedLocation!.id && att.isActive)
               .toList();
         }
       } else if (currentUser.sectorId != null) {
         filteredAttendees = attendeeProvider.attendees
-            .where((att) => att.sectorId == currentUser.sectorId)
+            .where(
+                (att) => att.sectorId == currentUser.sectorId && att.isActive)
             .toList();
       }
     }

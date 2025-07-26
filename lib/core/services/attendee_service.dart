@@ -38,9 +38,36 @@ class AttendeeService {
   // Actualizar un asistente
   Future<void> updateAttendee(AttendeeModel attendee) async {
     try {
-      await _firestore.collection('attendees').doc(attendee.id).update(attendee.toFirestore());
+      await _firestore
+          .collection('attendees')
+          .doc(attendee.id)
+          .update(attendee.toFirestore());
     } catch (e) {
       throw Exception('Error al actualizar el asistente: $e');
     }
   }
-} 
+
+  // Desactivar un asistente
+  Future<void> deactivateAttendee(String attendeeId) async {
+    try {
+      await _firestore.collection('attendees').doc(attendeeId).update({
+        'isActive': false,
+        'deactivatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error al desactivar el asistente: $e');
+    }
+  }
+
+  // Activar un asistente
+  Future<void> activateAttendee(String attendeeId) async {
+    try {
+      await _firestore.collection('attendees').doc(attendeeId).update({
+        'isActive': true,
+        'activatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error al activar el asistente: $e');
+    }
+  }
+}

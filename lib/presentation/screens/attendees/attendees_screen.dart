@@ -32,7 +32,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
   City? _filterCity;
   Commune? _filterCommune;
   Location? _filterLocation;
-  
+
   // Variable para mostrar el nombre del sector del usuario
   String? _userSectorName;
 
@@ -51,17 +51,24 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
 
   Future<void> _fetchUserSectorName(String sectorId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('locations').doc(sectorId).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('locations')
+          .doc(sectorId)
+          .get();
       if (doc.exists && mounted) {
         setState(() {
           _userSectorName = doc.data()!["name"] ?? sectorId;
         });
       } else if (mounted) {
-        setState(() { _userSectorName = sectorId; });
+        setState(() {
+          _userSectorName = sectorId;
+        });
       }
     } catch (_) {
       if (mounted) {
-        setState(() { _userSectorName = sectorId; });
+        setState(() {
+          _userSectorName = sectorId;
+        });
       }
     }
   }
@@ -86,7 +93,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
     if (userProvider.isAdmin) {
       if (_selectedLocation == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Por favor selecciona una localidad.')),
+          const SnackBar(
+              content: Text('Error: Por favor selecciona una localidad.')),
         );
         return;
       }
@@ -94,7 +102,9 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
     } else {
       if (userProvider.user == null || userProvider.user!.sectorId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Usuario no autenticado o sin sector asignado.')),
+          const SnackBar(
+              content:
+                  Text('Error: Usuario no autenticado o sin sector asignado.')),
         );
         return;
       }
@@ -108,16 +118,32 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       return;
     }
 
+    // Validar permisos para cambiar el estado de activación
+    bool canChangeActiveStatus = userProvider.isAdmin ||
+        (userProvider.user?.isApproved == true &&
+            userProvider.user?.sectorId != null);
+
+    // Si no tiene permisos, mantener el estado original del asistente
+    bool finalActiveStatus = canChangeActiveStatus
+        ? _isAttendeeActive
+        : (existingAttendee?.isActive ?? true);
+
     AttendeeModel attendeeToSave = AttendeeModel(
       id: existingAttendee?.id,
-      name: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
-      lastName: _lastNameController.text.trim().isEmpty ? null : _lastNameController.text.trim(),
+      name: _nameController.text.trim().isEmpty
+          ? null
+          : _nameController.text.trim(),
+      lastName: _lastNameController.text.trim().isEmpty
+          ? null
+          : _lastNameController.text.trim(),
       type: _selectedType,
       sectorId: assignedSectorId,
-      contactInfo: _contactInfoController.text.trim().isEmpty ? null : _contactInfoController.text.trim(),
+      contactInfo: _contactInfoController.text.trim().isEmpty
+          ? null
+          : _contactInfoController.text.trim(),
       createdAt: existingAttendee?.createdAt ?? DateTime.now(),
       createdByUserId: existingAttendee?.createdByUserId ?? currentUser.uid,
-      isActive: _isAttendeeActive,
+      isActive: finalActiveStatus,
     );
 
     if (existingAttendee == null) {
@@ -129,7 +155,9 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         Navigator.pop(context);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al agregar: ${attendeeProvider.errorMessage}')),
+          SnackBar(
+              content:
+                  Text('Error al agregar: ${attendeeProvider.errorMessage}')),
         );
       }
     } else {
@@ -142,17 +170,36 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
         contactInfo: attendeeToSave.contactInfo,
         createdAt: existingAttendee.createdAt,
         createdByUserId: existingAttendee.createdByUserId,
-        isActive: _isAttendeeActive,
+        isActive: finalActiveStatus,
       );
       await attendeeProvider.updateAttendee(attendeeToSave);
       if (mounted && attendeeProvider.errorMessage == null) {
+        // Mensaje específico si se cambió el estado de activación
+        String message = 'Asistente actualizado exitosamente.';
+        if (existingAttendee != null &&
+            existingAttendee.isActive != finalActiveStatus) {
+          message = finalActiveStatus
+              ? 'Asistente activado exitosamente.'
+              : 'Asistente desactivado exitosamente.';
+        } else if (existingAttendee == null) {
+          // Para nuevos asistentes
+          message = finalActiveStatus
+              ? 'Asistente agregado exitosamente (activo).'
+              : 'Asistente agregado exitosamente (desactivado).';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Asistente actualizado exitosamente.')),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: finalActiveStatus ? Colors.green : Colors.orange,
+          ),
         );
         Navigator.pop(context);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al actualizar: ${attendeeProvider.errorMessage}')),
+          SnackBar(
+              content: Text(
+                  'Error al actualizar: ${attendeeProvider.errorMessage}')),
         );
       }
     }
@@ -166,7 +213,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
     // Solo admin puede crear/editar asistentes para cualquier sector
     if (!userProvider.isAdmin && userProvider.user?.sectorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No tienes permisos para gestionar asistentes.')),
+        const SnackBar(
+            content: Text('No tienes permisos para gestionar asistentes.')),
       );
       return;
     }
@@ -186,13 +234,16 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       // Solo admin puede cambiar el sector
       if (userProvider.isAdmin) {
         // Find and set location data for editing
-        final location = locationProvider.locations.firstWhereOrNull((l) => l.id == attendeeToEdit.sectorId);
+        final location = locationProvider.locations
+            .firstWhereOrNull((l) => l.id == attendeeToEdit.sectorId);
         if (location != null) {
           _selectedLocation = location;
-          final commune = locationProvider.communes.firstWhereOrNull((c) => c.id == location.communeId);
+          final commune = locationProvider.communes
+              .firstWhereOrNull((c) => c.id == location.communeId);
           if (commune != null) {
             _selectedCommune = commune;
-            final city = locationProvider.cities.firstWhereOrNull((c) => c.id == commune.cityId);
+            final city = locationProvider.cities
+                .firstWhereOrNull((c) => c.id == commune.cityId);
             if (city != null) {
               _selectedCity = city;
             }
@@ -210,18 +261,27 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       _selectedLocation = null;
     }
 
+    // Forzar rebuild del widget para actualizar el switch
+    setState(() {});
+
     // Validar que los valores seleccionados existen en las listas disponibles
     if (userProvider.isAdmin) {
-      if (_selectedCity != null && !locationProvider.cities.any((city) => city.id == _selectedCity!.id)) {
+      if (_selectedCity != null &&
+          !locationProvider.cities
+              .any((city) => city.id == _selectedCity!.id)) {
         _selectedCity = null;
         _selectedCommune = null;
         _selectedLocation = null;
       }
-      if (_selectedCommune != null && !locationProvider.communes.any((commune) => commune.id == _selectedCommune!.id)) {
+      if (_selectedCommune != null &&
+          !locationProvider.communes
+              .any((commune) => commune.id == _selectedCommune!.id)) {
         _selectedCommune = null;
         _selectedLocation = null;
       }
-      if (_selectedLocation != null && !locationProvider.locations.any((location) => location.id == _selectedLocation!.id)) {
+      if (_selectedLocation != null &&
+          !locationProvider.locations
+              .any((location) => location.id == _selectedLocation!.id)) {
         _selectedLocation = null;
       }
     }
@@ -230,6 +290,9 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
       context: context,
       builder: (context) {
         final locationProvider = context.watch<LocationProvider>();
+
+        // Variable local para el estado del switch dentro del diálogo
+        bool isAttendeeActive = _isAttendeeActive;
 
         return AlertDialog(
           title: const Text('Añadir Nuevo Asistente'),
@@ -247,7 +310,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     value: _selectedType,
                     items: const [
                       DropdownMenuItem(value: 'member', child: Text('Miembro')),
-                      DropdownMenuItem(value: 'listener', child: Text('Oyente')),
+                      DropdownMenuItem(
+                          value: 'listener', child: Text('Oyente')),
                     ],
                     onChanged: (String? newValue) {
                       setState(() {
@@ -255,7 +319,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                       });
                     },
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Selecciona un tipo';
+                      if (value == null || value.isEmpty)
+                        return 'Selecciona un tipo';
                       return null;
                     },
                   ),
@@ -264,7 +329,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     controller: _nameController,
                     decoration: const InputDecoration(labelText: 'Nombre'),
                     validator: (value) {
-                      if (_selectedType == 'member' && (value == null || value.isEmpty)) {
+                      if (_selectedType == 'member' &&
+                          (value == null || value.isEmpty)) {
                         return 'Por favor ingrese el nombre del miembro';
                       }
                       return null;
@@ -275,7 +341,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     controller: _lastNameController,
                     decoration: const InputDecoration(labelText: 'Apellido'),
                     validator: (value) {
-                      if (_selectedType == 'member' && (value == null || value.isEmpty)) {
+                      if (_selectedType == 'member' &&
+                          (value == null || value.isEmpty)) {
                         return 'Por favor ingrese el apellido del miembro';
                       }
                       return null;
@@ -284,11 +351,14 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _contactInfoController,
-                    decoration: const InputDecoration(labelText: 'Información de Contacto (Opcional)'),
+                    decoration: const InputDecoration(
+                        labelText: 'Información de Contacto (Opcional)'),
                   ),
                   const SizedBox(height: 16),
                   if (userProvider.isAdmin) ...[
-                    const Text('Ubicación del Asistente:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text('Ubicación del Asistente:',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<City>(
                       decoration: const InputDecoration(
@@ -297,7 +367,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                       ),
                       value: _selectedCity,
                       items: locationProvider.cities.map((city) {
-                        return DropdownMenuItem(value: city, child: Text(city.name));
+                        return DropdownMenuItem(
+                            value: city, child: Text(city.name));
                       }).toList(),
                       onChanged: (City? newValue) {
                         setState(() {
@@ -310,7 +381,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         }
                       },
                       validator: (value) {
-                        if (userProvider.isAdmin && value == null) return 'Selecciona una ciudad';
+                        if (userProvider.isAdmin && value == null)
+                          return 'Selecciona una ciudad';
                         return null;
                       },
                     ),
@@ -322,7 +394,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                       ),
                       value: _selectedCommune,
                       items: locationProvider.communes.map((commune) {
-                        return DropdownMenuItem(value: commune, child: Text(commune.name));
+                        return DropdownMenuItem(
+                            value: commune, child: Text(commune.name));
                       }).toList(),
                       onChanged: (Commune? newValue) {
                         setState(() {
@@ -334,7 +407,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         }
                       },
                       validator: (value) {
-                        if (userProvider.isAdmin && value == null) return 'Selecciona una comuna';
+                        if (userProvider.isAdmin && value == null)
+                          return 'Selecciona una comuna';
                         return null;
                       },
                     ),
@@ -346,7 +420,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                       ),
                       value: _selectedLocation,
                       items: locationProvider.locations.map((location) {
-                        return DropdownMenuItem(value: location, child: Text(location.name));
+                        return DropdownMenuItem(
+                            value: location, child: Text(location.name));
                       }).toList(),
                       onChanged: (Location? newValue) {
                         setState(() {
@@ -354,13 +429,16 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         });
                       },
                       validator: (value) {
-                        if (userProvider.isAdmin && value == null) return 'Selecciona una localidad';
+                        if (userProvider.isAdmin && value == null)
+                          return 'Selecciona una localidad';
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
                   ] else ...[
-                    const Text('Asistente será asignado al sector:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text('Asistente será asignado al sector:',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Text(
                       _userSectorName ?? userProvider.user?.sectorId ?? 'N/A',
@@ -368,17 +446,50 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (attendeeToEdit != null) ...[
-                    SwitchListTile(
-                      title: const Text('Activo'),
-                      value: _isAttendeeActive,
-                      onChanged: (bool newValue) {
+                  // Dropdown de estado - solo para usuarios autorizados
+                  if (userProvider.isAdmin ||
+                      (userProvider.user?.isApproved == true &&
+                          userProvider.user?.sectorId != null)) ...[
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Estado del Asistente',
+                        border: OutlineInputBorder(),
+                      ),
+                      value: isAttendeeActive ? 'activo' : 'desactivado',
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'activo',
+                          child: Text('Activo'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'desactivado',
+                          child: Text('Desactivado'),
+                        ),
+                      ],
+                      onChanged: (String? newValue) {
                         setState(() {
-                          _isAttendeeActive = newValue;
+                          isAttendeeActive = newValue == 'activo';
+                          _isAttendeeActive = newValue == 'activo';
                         });
                       },
                     ),
-                ],
+                  ] else ...[
+                    // Mostrar estado actual para usuarios sin permisos
+                    ListTile(
+                      title: const Text('Estado'),
+                      subtitle: Text(
+                        isAttendeeActive ? 'Activo' : 'Desactivado',
+                        style: TextStyle(
+                          color: isAttendeeActive ? Colors.green : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      leading: Icon(
+                        isAttendeeActive ? Icons.check_circle : Icons.block,
+                        color: isAttendeeActive ? Colors.green : Colors.grey,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -390,7 +501,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
             ),
             ElevatedButton(
               onPressed: () => _saveAttendee(attendeeToEdit),
-              child: Text(attendeeToEdit == null ? 'Añadir' : 'Guardar Cambios'),
+              child:
+                  Text(attendeeToEdit == null ? 'Añadir' : 'Guardar Cambios'),
             ),
           ],
         );
@@ -421,10 +533,9 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Consumer<AttendeeProvider>(
               builder: (context, attendeeProvider, child) {
-                // Calcular asistentes filtrados usando la misma lógica existente
-                List<AttendeeModel> filteredAttendees = attendeeProvider.attendees
-                    .where((a) => a.isActive)
-                    .toList();
+                // Calcular asistentes filtrados - mostrar todos (activos e inactivos)
+                List<AttendeeModel> filteredAttendees =
+                    attendeeProvider.attendees.toList();
 
                 // Aplicar filtros para administradores (misma lógica que abajo)
                 if (userProvider.isAdmin) {
@@ -435,7 +546,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                   } else if (_filterCommune != null) {
                     final locationProvider = context.read<LocationProvider>();
                     final sectorsInCommune = locationProvider.locations
-                        .where((location) => location.communeId == _filterCommune!.id)
+                        .where((location) =>
+                            location.communeId == _filterCommune!.id)
                         .map((location) => location.id)
                         .toList();
                     filteredAttendees = filteredAttendees
@@ -448,7 +560,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         .map((commune) => commune.id)
                         .toList();
                     final sectorsInCity = locationProvider.locations
-                        .where((location) => communesInCity.contains(location.communeId))
+                        .where((location) =>
+                            communesInCity.contains(location.communeId))
                         .map((location) => location.id)
                         .toList();
                     filteredAttendees = filteredAttendees
@@ -491,7 +604,7 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
             ),
           ),
           // Filtros para administradores
-          if (userProvider.isAdmin) 
+          if (userProvider.isAdmin)
             Container(
               padding: const EdgeInsets.all(16.0),
               child: Consumer<LocationProvider>(
@@ -531,7 +644,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         ),
                         value: _filterCity,
                         items: locationProvider.cities.map((city) {
-                          return DropdownMenuItem(value: city, child: Text(city.name));
+                          return DropdownMenuItem(
+                              value: city, child: Text(city.name));
                         }).toList(),
                         onChanged: (City? newValue) {
                           setState(() {
@@ -553,9 +667,12 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         ),
                         value: _filterCommune,
                         items: locationProvider.communes
-                            .where((commune) => _filterCity == null || commune.cityId == _filterCity!.id)
+                            .where((commune) =>
+                                _filterCity == null ||
+                                commune.cityId == _filterCity!.id)
                             .map((commune) {
-                          return DropdownMenuItem(value: commune, child: Text(commune.name));
+                          return DropdownMenuItem(
+                              value: commune, child: Text(commune.name));
                         }).toList(),
                         onChanged: (Commune? newValue) {
                           setState(() {
@@ -576,9 +693,12 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         ),
                         value: _filterLocation,
                         items: locationProvider.locations
-                            .where((location) => _filterCommune == null || location.communeId == _filterCommune!.id)
+                            .where((location) =>
+                                _filterCommune == null ||
+                                location.communeId == _filterCommune!.id)
                             .map((location) {
-                          return DropdownMenuItem(value: location, child: Text(location.name));
+                          return DropdownMenuItem(
+                              value: location, child: Text(location.name));
                         }).toList(),
                         onChanged: (Location? newValue) {
                           setState(() {
@@ -603,9 +723,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                       child: Text('Error: ${attendeeProvider.errorMessage}'));
                 }
 
-                List<AttendeeModel> displayAttendees = attendeeProvider.attendees
-                    .where((a) => a.isActive)
-                    .toList();
+                List<AttendeeModel> displayAttendees =
+                    attendeeProvider.attendees.toList();
 
                 // Aplicar filtros para administradores
                 if (userProvider.isAdmin) {
@@ -617,7 +736,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     // Si no hay sector específico pero sí comuna, filtrar por todos los sectores de esa comuna
                     final locationProvider = context.read<LocationProvider>();
                     final sectorsInCommune = locationProvider.locations
-                        .where((location) => location.communeId == _filterCommune!.id)
+                        .where((location) =>
+                            location.communeId == _filterCommune!.id)
                         .map((location) => location.id)
                         .toList();
                     displayAttendees = displayAttendees
@@ -631,7 +751,8 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         .map((commune) => commune.id)
                         .toList();
                     final sectorsInCity = locationProvider.locations
-                        .where((location) => communesInCity.contains(location.communeId))
+                        .where((location) =>
+                            communesInCity.contains(location.communeId))
                         .map((location) => location.id)
                         .toList();
                     displayAttendees = displayAttendees
@@ -647,13 +768,14 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 120), // Espacio para el FloatingActionButton
+                  padding: const EdgeInsets.only(
+                      bottom: 120), // Espacio para el FloatingActionButton
                   itemCount: displayAttendees.length,
                   itemBuilder: (context, index) {
                     final attendee = displayAttendees[index];
                     String typeText = '';
                     Color typeColor = Colors.grey;
-                    
+
                     switch (attendee.type) {
                       case 'member':
                         typeText = 'Miembro';
@@ -672,34 +794,101 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                     return Card(
                       margin: const EdgeInsets.symmetric(
                           horizontal: 16.0, vertical: 8.0),
+                      color: attendee.isActive ? null : Colors.grey.shade100,
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: typeColor,
+                          backgroundColor:
+                              attendee.isActive ? typeColor : Colors.grey,
                           child: Text(
                             (attendee.name != null && attendee.name!.isNotEmpty)
                                 ? attendee.name![0].toUpperCase()
                                 : typeText[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: attendee.isActive
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                            ),
                           ),
                         ),
-                        title: Text(
-                          (attendee.name != null && attendee.name!.isNotEmpty)
-                              ? '${attendee.name!} ${attendee.lastName ?? ''}'
-                              : '$typeText - ${attendee.id!.substring(0, 4)}',
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                (attendee.name != null &&
+                                        attendee.name!.isNotEmpty)
+                                    ? '${attendee.name!} ${attendee.lastName ?? ''}'
+                                    : '$typeText - ${attendee.id!.substring(0, 4)}',
+                                style: TextStyle(
+                                  color: attendee.isActive
+                                      ? null
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            if (!attendee.isActive)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'DESACTIVADO',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (attendee.contactInfo != null && attendee.contactInfo!.isNotEmpty)
-                              Text(attendee.contactInfo!),
-                            Text(
-                              'Tipo: $typeText',
-                              style: TextStyle(fontSize: 12, color: typeColor),
+                            if (attendee.contactInfo != null &&
+                                attendee.contactInfo!.isNotEmpty)
+                              Text(
+                                attendee.contactInfo!,
+                                style: TextStyle(
+                                  color: attendee.isActive
+                                      ? null
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  'Tipo: $typeText',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: attendee.isActive
+                                        ? typeColor
+                                        : Colors.grey,
+                                  ),
+                                ),
+                                if (!attendee.isActive) ...[
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '• No disponible para asistencia',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          icon: Icon(
+                            Icons.edit,
+                            color:
+                                attendee.isActive ? Colors.blue : Colors.grey,
+                          ),
                           onPressed: () => _showAddEditAttendeeDialog(attendee),
                         ),
                         onTap: () {
@@ -742,4 +931,4 @@ extension ListExtension<T> on List<T> {
     }
     return null;
   }
-} 
+}

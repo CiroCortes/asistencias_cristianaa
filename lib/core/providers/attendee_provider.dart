@@ -11,7 +11,8 @@ class AttendeeProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   final UserProvider _userProvider;
-  StreamSubscription? _attendeesSubscription; // Variable to hold the subscription
+  StreamSubscription?
+      _attendeesSubscription; // Variable to hold the subscription
 
   List<AttendeeModel> get attendees => _attendees;
   bool get isLoading => _isLoading;
@@ -43,7 +44,8 @@ class AttendeeProvider with ChangeNotifier {
     if (_userProvider.isAdmin) {
       attendeesStream = _attendeeService.getAllAttendeesStream();
     } else if (_userProvider.user?.sectorId != null) {
-      attendeesStream = _attendeeService.getAttendeesBySectorStream(_userProvider.user!.sectorId!);
+      attendeesStream = _attendeeService
+          .getAttendeesBySectorStream(_userProvider.user!.sectorId!);
     } else {
       _attendees = []; // No sectorId for non-admin non-approved user
       _isLoading = false;
@@ -98,7 +100,35 @@ class AttendeeProvider with ChangeNotifier {
     }
   }
 
-  // TODO: Añadir métodos para actualizar y eliminar asistentes si se requieren en el provider
+  // Desactivar un asistente
+  Future<void> deactivateAttendee(String attendeeId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _attendeeService.deactivateAttendee(attendeeId);
+    } catch (e) {
+      _errorMessage = 'Error al desactivar asistente: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Activar un asistente
+  Future<void> activateAttendee(String attendeeId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _attendeeService.activateAttendee(attendeeId);
+    } catch (e) {
+      _errorMessage = 'Error al activar asistente: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   @override
   void dispose() {
@@ -106,4 +136,4 @@ class AttendeeProvider with ChangeNotifier {
     _userProvider.removeListener(_onUserChange);
     super.dispose();
   }
-} 
+}

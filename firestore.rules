@@ -1,9 +1,97 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permitir lectura y escritura para todos los usuarios autenticados
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Función para verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Función para verificar si el usuario está activo
+    function isUserActive() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    // Función para verificar si el usuario está aprobado
+    function isUserApproved() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
+    }
+    
+    // Función para verificar si el usuario es admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Función para obtener el sector del usuario
+    function getUserSector() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sectorId;
+    }
+    
+    // Reglas para la colección de usuarios
+    match /users/{userId} {
+      // Los usuarios pueden leer su propio documento
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Los usuarios pueden actualizar su propio documento, los admins pueden actualizar cualquier usuario
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Reglas para la colección de asistentes
+    match /attendees/{attendeeId} {
+      // Solo usuarios activos y aprobados pueden leer asistentes
+      allow read: if isUserActive() && isUserApproved();
+      // Los admins pueden crear/actualizar cualquier asistente
+      // Los usuarios normales solo pueden crear/actualizar asistentes de su sector
+      allow write: if isUserActive() && isUserApproved() && 
+                   (isAdmin() || 
+                    (resource == null && request.resource.data.sectorId == getUserSector()) ||
+                    (resource != null && resource.data.sectorId == getUserSector()));
+    }
+    
+    // Reglas para la colección de registros de asistencia
+    match /attendanceRecords/{recordId} {
+      // Solo usuarios activos y aprobados pueden leer registros
+      allow read: if isUserActive() && isUserApproved();
+      // Solo usuarios activos y aprobados pueden crear registros
+      allow create: if isUserActive() && isUserApproved();
+      // Solo admins pueden actualizar/eliminar registros
+      allow update, delete: if isUserActive() && isUserApproved() && isAdmin();
+    }
+    
+    // Reglas para la colección de reuniones recurrentes
+    match /recurring_meetings/{meetingId} {
+      // Solo usuarios activos y aprobados pueden leer reuniones
+      allow read: if isUserActive() && isUserApproved();
+      // Solo admins pueden crear/actualizar reuniones
+      allow write: if isUserActive() && isUserApproved() && isAdmin();
+    }
+    
+    // Reglas para la colección de ciudades
+    match /cities/{cityId} {
+      // Solo usuarios activos y aprobados pueden leer ciudades
+      allow read: if isUserActive() && isUserApproved();
+      // Solo admins pueden crear/actualizar ciudades
+      allow write: if isUserActive() && isUserApproved() && isAdmin();
+    }
+    
+    // Reglas para la colección de comunas
+    match /communes/{communeId} {
+      // Solo usuarios activos y aprobados pueden leer comunas
+      allow read: if isUserActive() && isUserApproved();
+      // Solo admins pueden crear/actualizar comunas
+      allow write: if isUserActive() && isUserApproved() && isAdmin();
+    }
+    
+    // Reglas para la colección de localidades
+    match /locations/{locationId} {
+      // Solo usuarios activos y aprobados pueden leer localidades
+      allow read: if isUserActive() && isUserApproved();
+      // Solo admins pueden crear/actualizar localidades
+      allow write: if isUserActive() && isUserApproved() && isAdmin();
     }
   }
 } 
