@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:asistencias_app/core/providers/user_provider.dart';
+import 'package:asistencias_app/core/providers/location_provider.dart';
 import 'package:asistencias_app/core/services/admin_utilities_service.dart';
+import 'package:asistencias_app/data/models/location_models.dart';
 
 class AdminUtilitiesScreen extends StatefulWidget {
   const AdminUtilitiesScreen({super.key});
@@ -12,7 +14,7 @@ class AdminUtilitiesScreen extends StatefulWidget {
 
 class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
   final AdminUtilitiesService _utilitiesService = AdminUtilitiesService();
-  
+
   void _showMessage(String message, {Color? backgroundColor}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +56,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         onProgress: (message) => print('🔷 $message'),
         userEmail: currentUser?.email,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
         _showMessage(
@@ -99,7 +101,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         onProgress: (message) => print('🔷 $message'),
         userEmail: currentUser?.email,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
         _showMessage(
@@ -118,7 +120,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
   Future<void> _cleanupData(String cleanupType) async {
     final userProvider = context.read<UserProvider>();
     final currentUser = userProvider.user;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -145,7 +147,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         onProgress: (message) => print('🔷 $message'),
         userEmail: currentUser?.email,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
         if (cleanupType == 'analyze') {
@@ -193,14 +195,15 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
     );
 
     try {
-      final results = await _utilitiesService.analyzeWeeklyAttendanceDiscrepancies(
+      final results =
+          await _utilitiesService.analyzeWeeklyAttendanceDiscrepancies(
         onProgress: (message) => print('🔍 $message'),
         userEmail: currentUser?.email,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
-        
+
         if (results.containsKey('error')) {
           _showMessage(
             '⚠️ ${results['error']}',
@@ -209,7 +212,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         } else {
           final discrepancy = results['discrepancy'] ?? 0;
           final weekNumber = results['weekNumber'] ?? 0;
-          
+
           if (discrepancy == 0) {
             _showMessage(
               '✅ Semana $weekNumber: Sin discrepancias encontradas',
@@ -247,7 +250,9 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(width: 20),
-                Text(dryRun ? "Simulando limpieza..." : "Limpiando registros..."),
+                Text(dryRun
+                    ? "Simulando limpieza..."
+                    : "Limpiando registros..."),
               ],
             ),
           ),
@@ -261,10 +266,10 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         userEmail: currentUser?.email,
         dryRun: dryRun,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
-        
+
         if (results.containsKey('error')) {
           _showMessage(
             '⚠️ ${results['error']}',
@@ -275,7 +280,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
           final deletedRecords = results['deletedRecords'] ?? 0;
           final deletedAttendance = results['deletedAttendance'] ?? 0;
           final weekNumber = results['weekNumber'] ?? 0;
-          
+
           if (incorrectRecords == 0) {
             _showMessage(
               '✅ Semana $weekNumber: No hay registros en días incorrectos',
@@ -300,6 +305,271 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
         _showMessage('❌ Error: ${e.toString()}', backgroundColor: Colors.red);
       }
     }
+  }
+
+  Future<void> _deleteAttendeesSafely({bool dryRun = true}) async {
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.user;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Text(dryRun
+                    ? "Analizando asistentes..."
+                    : "Eliminando asistentes..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final results = await _utilitiesService.deleteAttendeesSafely(
+        onProgress: (message) => print('🗑️ $message'),
+        userEmail: currentUser?.email,
+        dryRun: dryRun,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        final totalAttendees = results['totalAttendees'] ?? 0;
+        final referencedAttendees = results['referencedAttendees'] ?? 0;
+        final safeToDelete = results['safeToDelete'] ?? 0;
+        final deletedAttendees = results['deletedAttendees'] ?? 0;
+
+        if (totalAttendees == 0) {
+          _showMessage(
+            'ℹ️ No hay asistentes TEST para eliminar',
+            backgroundColor: Colors.blue,
+          );
+        } else if (referencedAttendees > 0 && safeToDelete == 0) {
+          _showMessage(
+            '⚠️ Todos los asistentes están referenciados en registros de asistencia. Primero elimina los registros.',
+            backgroundColor: Colors.orange,
+          );
+        } else if (dryRun) {
+          _showMessage(
+            '🔍 Simulación: $safeToDelete asistentes se eliminarían, $referencedAttendees están referenciados',
+            backgroundColor: Colors.blue,
+          );
+        } else {
+          _showMessage(
+            '✅ Eliminación completada: $deletedAttendees asistentes eliminados, $referencedAttendees referenciados',
+            backgroundColor: Colors.green,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage('❌ Error: ${e.toString()}', backgroundColor: Colors.red);
+      }
+    }
+  }
+
+  Future<void> _deleteAttendanceRecordsSafely({
+    bool dryRun = true,
+    DateTime? specificDate,
+    String? sectorId,
+    String? meetingType,
+  }) async {
+    final userProvider = context.read<UserProvider>();
+    final currentUser = userProvider.user;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 20),
+                Text(dryRun
+                    ? "Analizando registros..."
+                    : "Eliminando registros..."),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final results = await _utilitiesService.deleteAttendanceRecordsSafely(
+        onProgress: (message) => print('📊 $message'),
+        userEmail: currentUser?.email,
+        dryRun: dryRun,
+        specificDate: specificDate,
+        sectorId: sectorId,
+        meetingType: meetingType,
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        final totalRecords = results['totalRecords'] ?? 0;
+        final deletedRecords = results['deletedRecords'] ?? 0;
+        final deletedAttendance = results['deletedAttendance'] ?? 0;
+
+        if (totalRecords == 0) {
+          _showMessage(
+            'ℹ️ No se encontraron registros que coincidan con los criterios',
+            backgroundColor: Colors.blue,
+          );
+        } else if (dryRun) {
+          _showMessage(
+            '🔍 Simulación: $totalRecords registros ($deletedAttendance personas) se eliminarían',
+            backgroundColor: Colors.blue,
+          );
+        } else {
+          _showMessage(
+            '✅ Eliminación completada: $deletedRecords registros ($deletedAttendance personas) eliminados',
+            backgroundColor: Colors.green,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        _showMessage('❌ Error: ${e.toString()}', backgroundColor: Colors.red);
+      }
+    }
+  }
+
+  // Función para mostrar selector completo de ubicación
+  Future<String?> _showSectorSelector() async {
+    final locationProvider = context.read<LocationProvider>();
+
+    // Cargar datos si no están disponibles
+    if (locationProvider.cities.isEmpty) {
+      await locationProvider.loadCities();
+    }
+
+    City? selectedCity;
+    Commune? selectedCommune;
+    Location? selectedLocation;
+
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Seleccionar Ubicación'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Selector de Ciudad
+                DropdownButtonFormField<City>(
+                  decoration: const InputDecoration(
+                    labelText: 'Ciudad',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: selectedCity,
+                  items: locationProvider.cities.map((city) {
+                    return DropdownMenuItem(
+                      value: city,
+                      child: Text(city.name),
+                    );
+                  }).toList(),
+                  onChanged: (City? value) async {
+                    setState(() {
+                      selectedCity = value;
+                      selectedCommune = null;
+                      selectedLocation = null;
+                    });
+                    if (value != null) {
+                      await locationProvider.loadCommunes(value.id);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Selector de Comuna (Ruta)
+                if (selectedCity != null) ...[
+                  DropdownButtonFormField<Commune>(
+                    decoration: const InputDecoration(
+                      labelText: 'Ruta',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: selectedCommune,
+                    items: locationProvider.communes
+                        .where((c) => c.cityId == selectedCity!.id)
+                        .map((commune) {
+                      return DropdownMenuItem(
+                        value: commune,
+                        child: Text(commune.name),
+                      );
+                    }).toList(),
+                    onChanged: (Commune? value) async {
+                      setState(() {
+                        selectedCommune = value;
+                        selectedLocation = null;
+                      });
+                      if (value != null) {
+                        await locationProvider.loadLocations(value.id);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Selector de Sector
+                if (selectedCommune != null) ...[
+                  DropdownButtonFormField<Location>(
+                    decoration: const InputDecoration(
+                      labelText: 'Sector',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: selectedLocation,
+                    items: locationProvider.locations
+                        .where((l) => l.communeId == selectedCommune!.id)
+                        .map((location) {
+                      return DropdownMenuItem(
+                        value: location,
+                        child: Text(location.name),
+                      );
+                    }).toList(),
+                    onChanged: (Location? value) {
+                      setState(() {
+                        selectedLocation = value;
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: selectedLocation != null
+                  ? () => Navigator.pop(context, selectedLocation!.id)
+                  : null,
+              child: const Text('Seleccionar'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -380,11 +650,13 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.group_add, color: Colors.blue.shade700, size: 28),
+                        Icon(Icons.group_add,
+                            color: Colors.blue.shade700, size: 28),
                         const SizedBox(width: 12),
                         const Text(
                           'Crear Asistentes TEST',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -410,8 +682,11 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                                 Text('• Total esperado: ~80 asistentes'),
                                 Text('• Nombres y datos simulados'),
                                 SizedBox(height: 16),
-                                Text('⚠️ Verificará que no existan asistentes TEST previos', 
-                                     style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                Text(
+                                    '⚠️ Verificará que no existan asistentes TEST previos',
+                                    style: TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                             actions: [
@@ -426,7 +701,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                             ],
                           ),
                         );
-                        
+
                         if (confirm == true) {
                           await _createTestAttendees();
                         }
@@ -451,11 +726,13 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.calendar_month, color: Colors.green.shade700, size: 28),
+                        Icon(Icons.calendar_month,
+                            color: Colors.green.shade700, size: 28),
                         const SizedBox(width: 12),
                         const Text(
                           'Crear Registros de Asistencia',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -470,20 +747,25 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('📊 Crear Registros de Asistencia'),
+                            title:
+                                const Text('📊 Crear Registros de Asistencia'),
                             content: const Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Esto creará registros para jun-jul 2025:'),
+                                Text(
+                                    'Esto creará registros para jun-jul 2025:'),
                                 SizedBox(height: 8),
                                 Text('• 35 fechas de reuniones programadas'),
                                 Text('• 4 tipos de reuniones por semana'),
                                 Text('• Asistencia realista (60-85%)'),
                                 Text('• Validación de máximo de registros'),
                                 SizedBox(height: 16),
-                                Text('🛡️ Requiere asistentes TEST creados previamente', 
-                                     style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                Text(
+                                    '🛡️ Requiere asistentes TEST creados previamente',
+                                    style: TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                             actions: [
@@ -498,7 +780,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                             ],
                           ),
                         );
-                        
+
                         if (confirm == true) {
                           await _createAttendanceRecords();
                         }
@@ -523,11 +805,13 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.cleaning_services, color: Colors.red.shade700, size: 28),
+                        Icon(Icons.cleaning_services,
+                            color: Colors.red.shade700, size: 28),
                         const SizedBox(width: 12),
                         const Text(
                           'Limpiar Datos Inconsistentes',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -575,18 +859,21 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Cancelar'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red),
                                       child: const Text('Confirmar'),
                                     ),
                                   ],
                                 ),
                               );
-                              
+
                               if (confirm == true) {
                                 await _cleanupData('full');
                               }
@@ -615,17 +902,21 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.bug_report, color: Colors.orange.shade700, size: 28),
+                        Icon(Icons.bug_report,
+                            color: Colors.orange.shade700, size: 28),
                         const SizedBox(width: 12),
-                        const Text(
-                          'Analizar Discrepancias de Asistencia',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        Expanded(
+                          child: const Text(
+                            'Analizar Discrepancias',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Analiza por qué los KPIs del dashboard no coinciden. Identifica registros en días incorrectos.',
+                      'Analiza discrepancias en KPIs e identifica registros en días incorrectos.',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
@@ -641,13 +932,17 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                               children: [
                                 Text('Este análisis identificará:'),
                                 SizedBox(height: 8),
-                                Text('• Registros en días incorrectos (lunes-viernes)'),
+                                Text(
+                                    '• Registros en días incorrectos (lunes-viernes)'),
                                 Text('• Diferencias entre KPIs del dashboard'),
                                 Text('• Distribución por día de la semana'),
                                 Text('• Detalles de registros problemáticos'),
                                 SizedBox(height: 16),
-                                Text('📊 Los resultados aparecen en la consola de debug', 
-                                     style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                                Text(
+                                    '📊 Los resultados aparecen en la consola de debug',
+                                    style: TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                             actions: [
@@ -662,7 +957,7 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                             ],
                           ),
                         );
-                        
+
                         if (confirm == true) {
                           await _analyzeAttendanceDiscrepancies();
                         }
@@ -688,17 +983,21 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.cleaning_services, color: Colors.purple.shade700, size: 28),
+                        Icon(Icons.cleaning_services,
+                            color: Colors.purple.shade700, size: 28),
                         const SizedBox(width: 12),
-                        const Text(
-                          'Limpiar Registros en Días Incorrectos',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        Expanded(
+                          child: const Text(
+                            'Limpiar Registros Incorrectos',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Elimina registros de asistencia que están en días incorrectos (lunes, martes, jueves, viernes). Solo mantiene miércoles, sábados y domingos.',
+                      'Elimina registros en días incorrectos (lunes-viernes). Mantiene solo miércoles, sábados y domingos.',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 16),
@@ -713,7 +1012,8 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                                   title: const Text('🔍 Simular Limpieza'),
                                   content: const Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text('Esta simulación mostrará:'),
                                       SizedBox(height: 8),
@@ -721,23 +1021,28 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                                       Text('• Total de personas afectadas'),
                                       Text('• Detalles de cada registro'),
                                       SizedBox(height: 16),
-                                      Text('🛡️ NO se eliminará nada, solo simulación', 
-                                           style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                                      Text(
+                                          '🛡️ NO se eliminará nada, solo simulación',
+                                          style: TextStyle(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.bold)),
                                     ],
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Cancelar'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
                                       child: const Text('🔍 Simular'),
                                     ),
                                   ],
                                 ),
                               );
-                              
+
                               if (confirm == true) {
                                 await _cleanupIncorrectDayRecords(dryRun: true);
                               }
@@ -757,41 +1062,378 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                               final confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: const Text('⚠️ Limpiar Registros Incorrectos'),
+                                  title: const Text(
+                                      '⚠️ Limpiar Registros Incorrectos'),
                                   content: const Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text('Esta acción eliminará:'),
                                       SizedBox(height: 8),
-                                      Text('• Registros en lunes, martes, jueves, viernes'),
-                                      Text('• Solo mantendrá miércoles, sábados, domingos'),
-                                      Text('• Los registros eliminados NO se pueden recuperar'),
+                                      Text(
+                                          '• Registros en lunes, martes, jueves, viernes'),
+                                      Text(
+                                          '• Solo mantendrá miércoles, sábados, domingos'),
+                                      Text(
+                                          '• Los registros eliminados NO se pueden recuperar'),
                                       SizedBox(height: 16),
-                                      Text('⚠️ Esta acción es irreversible', 
-                                           style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                      Text('⚠️ Esta acción es irreversible',
+                                          style: TextStyle(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.bold)),
                                     ],
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Cancelar'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red),
                                       child: const Text('🧹 Limpiar'),
                                     ),
                                   ],
                                 ),
                               );
-                              
+
                               if (confirm == true) {
-                                await _cleanupIncorrectDayRecords(dryRun: false);
+                                await _cleanupIncorrectDayRecords(
+                                    dryRun: false);
                               }
                             },
                             icon: const Icon(Icons.cleaning_services),
                             label: const Text('Limpiar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.indigo.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.delete_forever,
+                            color: Colors.indigo.shade700, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: const Text(
+                            'Eliminar Asistentes',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Elimina asistentes de forma segura sin afectar registros de asistencia.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('🔍 Analizar Asistentes'),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Este análisis verificará:'),
+                                      SizedBox(height: 8),
+                                      Text('• Asistentes TEST disponibles'),
+                                      Text(
+                                          '• Referencias en registros de asistencia'),
+                                      Text(
+                                          '• Asistentes seguros para eliminar'),
+                                      Text('• Detalles de referencias'),
+                                      SizedBox(height: 16),
+                                      Text(
+                                          '🛡️ NO se eliminará nada, solo análisis',
+                                          style: TextStyle(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text('🔍 Analizar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await _deleteAttendeesSafely(dryRun: true);
+                              }
+                            },
+                            icon: const Icon(Icons.analytics),
+                            label: const Text('Analizar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('⚠️ Eliminar Asistentes'),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Esta acción eliminará:'),
+                                      SizedBox(height: 8),
+                                      Text(
+                                          '• Solo asistentes TEST no referenciados'),
+                                      Text(
+                                          '• Verificará integridad referencial'),
+                                      Text(
+                                          '• Los asistentes eliminados NO se pueden recuperar'),
+                                      SizedBox(height: 16),
+                                      Text('⚠️ Esta acción es irreversible',
+                                          style: TextStyle(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red),
+                                      child: const Text('🗑️ Eliminar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await _deleteAttendeesSafely(dryRun: false);
+                              }
+                            },
+                            icon: const Icon(Icons.delete_forever),
+                            label: const Text('Eliminar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.teal.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today,
+                            color: Colors.teal.shade700, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: const Text(
+                            'Eliminar Registros Específicos',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Elimina registros por fecha específica. Útil para limpiar datos de prueba.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final selectedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+
+                              if (selectedDate != null) {
+                                final selectedSector =
+                                    await _showSectorSelector();
+
+                                if (selectedSector != null) {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title:
+                                          const Text('🔍 Analizar Registros'),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Analizará registros para:'),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                              '📅 ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                                          Text('📍 Sector: $selectedSector'),
+                                          const SizedBox(height: 16),
+                                          const Text(
+                                              '🛡️ Solo análisis, no elimina'),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Cancelar'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text('🔍 Analizar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    await _deleteAttendanceRecordsSafely(
+                                      dryRun: true,
+                                      specificDate: selectedDate,
+                                      sectorId: selectedSector,
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.analytics),
+                            label: const Text('Analizar por Fecha y Sector'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final selectedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+
+                              if (selectedDate != null) {
+                                final selectedSector =
+                                    await _showSectorSelector();
+
+                                if (selectedSector != null) {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title:
+                                          const Text('⚠️ Eliminar Registros'),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                              'Eliminará registros específicos:'),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                              '📅 ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                                          Text('📍 Sector: $selectedSector'),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                              '⚠️ Esta acción es irreversible'),
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Cancelar'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red),
+                                          child: const Text('🗑️ Eliminar'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    await _deleteAttendanceRecordsSafely(
+                                      dryRun: false,
+                                      specificDate: selectedDate,
+                                      sectorId: selectedSector,
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.delete_forever),
+                            label: const Text('Eliminar por Fecha y Sector'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red.shade600,
                               foregroundColor: Colors.white,
@@ -833,6 +1475,8 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
                       '• Completa: Elimina TODOS los registros de asistencia\n'
                       '• Discrepancias: Encuentra registros en días incorrectos\n'
                       '• Limpiar Días Incorrectos: Elimina registros en lunes-viernes\n'
+                      '• Eliminar Asistentes: Elimina asistentes de forma segura\n'
+                      '• Eliminar Registros: Elimina registros de asistencia específicos\n'
                       '• Los logs detallados aparecen en la consola de debug',
                       style: TextStyle(fontSize: 14),
                     ),
@@ -845,4 +1489,4 @@ class _AdminUtilitiesScreenState extends State<AdminUtilitiesScreen> {
       ),
     );
   }
-} 
+}

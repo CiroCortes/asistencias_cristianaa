@@ -384,18 +384,47 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
       // Combinar fecha seleccionada con hora real del evento
       final eventDateTime = _combineSelectedDateWithEventTime();
 
-      // Debug: Mostrar la diferencia entre fecha seleccionada y fecha final
-      // print('🔍 DEBUG - Registro de Asistencia:');
-      // print('   Fecha seleccionada: ${_selectedDate}');
-      // print('   Evento: ${_selectedMeeting!.name} (${_selectedMeeting!.time})');
-      // print('   Fecha final (evento): ${eventDateTime}');
-      // print('   AM/PM resultante: ${eventDateTime.hour < 14 ? "AM" : "PM"}');
+      // VALIDACIÓN INTELIGENTE: Verificar asistentes ya registrados
+      final existingAttendeeIds =
+          await _attendanceRecordService.getExistingAttendeeIds(
+              sectorId, eventDateTime, _selectedMeeting!.meetingType);
+
+      // Filtrar solo los asistentes que NO están ya registrados
+      final newAttendeeIds = _selectedAttendeeIds
+          .where((id) => !existingAttendeeIds.contains(id))
+          .toList();
+
+      // Si no hay nuevos asistentes para agregar
+      if (newAttendeeIds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'ℹ️ Todos los asistentes seleccionados ya están registrados para esta reunión.'),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // Mostrar información sobre asistentes filtrados
+      final filteredCount = _selectedAttendeeIds.length - newAttendeeIds.length;
+      if (filteredCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'ℹ️ $filteredCount asistentes ya estaban registrados. Agregando ${newAttendeeIds.length} nuevos.'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
 
       final record = AttendanceRecordModel(
         sectorId: sectorId,
         date: eventDateTime, // ← Usar fecha/hora combinada del evento
         meetingType: _selectedMeeting!.meetingType, // Usar meetingType para KPI
-        attendedAttendeeIds: _selectedAttendeeIds,
+        attendedAttendeeIds: newAttendeeIds, // Solo los nuevos asistentes
         visitorCount: _visitorCount,
         recordedByUserId: currentUser.uid,
       );
@@ -459,6 +488,17 @@ class _RecordAttendanceScreenState extends State<RecordAttendanceScreen> {
             .toList();
       }
     }
+
+    // Ordenar asistentes alfabéticamente por nombre completo
+    filteredAttendees.sort((a, b) {
+      String nameA = (a.name?.isNotEmpty == true)
+          ? '${a.name!} ${a.lastName ?? ''}'.trim()
+          : 'ZZZ_${a.type}'; // Enviar al final los que no tienen nombre
+      String nameB = (b.name?.isNotEmpty == true)
+          ? '${b.name!} ${b.lastName ?? ''}'.trim()
+          : 'ZZZ_${b.type}';
+      return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+    });
 
     // Validar que los valores seleccionados existen en las listas disponibles
     if (userProvider.isAdmin) {

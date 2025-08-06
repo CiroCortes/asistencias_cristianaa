@@ -398,6 +398,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   }
                 }).toList();
 
+                // Ordenar usuarios alfabéticamente por nombre completo
+                filteredUsers.sort((a, b) {
+                  return a.displayName
+                      .toLowerCase()
+                      .compareTo(b.displayName.toLowerCase());
+                });
+
                 if (filteredUsers.isEmpty) {
                   return const Center(
                       child: Text('No hay usuarios para mostrar.'));

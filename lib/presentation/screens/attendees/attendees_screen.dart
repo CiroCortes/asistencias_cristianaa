@@ -759,7 +759,26 @@ class _AttendeesScreenState extends State<AttendeesScreen> {
                         .where((a) => sectorsInCity.contains(a.sectorId))
                         .toList();
                   }
+                } else {
+                  // Para usuarios no admin, filtrar por su sector
+                  final userSectorId = userProvider.user?.sectorId;
+                  if (userSectorId != null) {
+                    displayAttendees = displayAttendees
+                        .where((a) => a.sectorId == userSectorId)
+                        .toList();
+                  }
                 }
+
+                // Ordenar asistentes alfabéticamente por nombre completo
+                displayAttendees.sort((a, b) {
+                  String nameA = (a.name?.isNotEmpty == true)
+                      ? '${a.name!} ${a.lastName ?? ''}'.trim()
+                      : 'ZZZ_${a.type}'; // Enviar al final los que no tienen nombre
+                  String nameB = (b.name?.isNotEmpty == true)
+                      ? '${b.name!} ${b.lastName ?? ''}'.trim()
+                      : 'ZZZ_${b.type}';
+                  return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+                });
 
                 if (displayAttendees.isEmpty) {
                   return const Center(

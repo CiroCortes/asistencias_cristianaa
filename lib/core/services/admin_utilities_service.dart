@@ -834,4 +834,351 @@ class AdminUtilitiesService {
       throw Exception('Error durante limpieza de registros incorrectos: $e');
     }
   }
+
+  /// Elimina asistentes de forma segura, verificando que no estén referenciados en registros de asistencia
+  Future<Map<String, int>> deleteAttendeesSafely({
+    required Function(String) onProgress,
+    String? userEmail,
+    List<String>?
+        attendeeIds, // IDs específicos a eliminar, si es null elimina todos los TEST
+    bool dryRun = true, // Si es true, solo simula la eliminación
+  }) async {
+    _validateAccess(userEmail);
+
+    try {
+      onProgress('🔍 Paso 1: Verificando asistentes a eliminar...');
+
+      List<String> attendeesToDelete = [];
+
+      if (attendeeIds != null && attendeeIds.isNotEmpty) {
+        // Eliminar IDs específicos
+        attendeesToDelete = attendeeIds;
+        onProgress(
+            '📋 Eliminación específica: ${attendeeIds.length} asistentes');
+      } else {
+        // Eliminar todos los asistentes TEST
+        final testAttendeesQuery = await _firestore
+            .collection('attendees')
+            .where('createdByUserId', isEqualTo: _adminUserId)
+            .get();
+
+        attendeesToDelete =
+            testAttendeesQuery.docs.map((doc) => doc.id).toList();
+        onProgress(
+            '📋 Eliminación TEST: ${attendeesToDelete.length} asistentes encontrados');
+      }
+
+      if (attendeesToDelete.isEmpty) {
+        return {
+          'totalAttendees': 0,
+          'referencedAttendees': 0,
+          'safeToDelete': 0,
+          'deletedAttendees': 0,
+          'dryRun': dryRun ? 1 : 0,
+        };
+      }
+
+      onProgress(
+          '🔍 Paso 2: Verificando referencias en registros de asistencia...');
+
+      // Buscar todos los registros de asistencia que referencian estos asistentes
+      final allRecordsQuery =
+          await _firestore.collection('attendanceRecords').get();
+      final allRecords = allRecordsQuery.docs;
+
+      final Set<String> referencedAttendeeIds = {};
+      final Map<String, List<String>> attendeeReferences =
+          {}; // attendeeId -> [recordIds]
+
+      for (final recordDoc in allRecords) {
+        final data = recordDoc.data();
+        final attendedIds =
+            List<String>.from(data['attendedAttendeeIds'] ?? []);
+
+        for (final attendeeId in attendedIds) {
+          if (attendeesToDelete.contains(attendeeId)) {
+            referencedAttendeeIds.add(attendeeId);
+
+            if (!attendeeReferences.containsKey(attendeeId)) {
+              attendeeReferences[attendeeId] = [];
+            }
+            attendeeReferences[attendeeId]!.add(recordDoc.id);
+          }
+        }
+      }
+
+      final safeToDelete = attendeesToDelete
+          .where((id) => !referencedAttendeeIds.contains(id))
+          .toList();
+      final referencedCount = referencedAttendeeIds.length;
+
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📊 ANÁLISIS DE SEGURIDAD:');
+      onProgress(
+          '   📋 Total asistentes a eliminar: ${attendeesToDelete.length}');
+      onProgress('   🔗 Referenciados en registros: $referencedCount');
+      onProgress('   ✅ Seguros para eliminar: ${safeToDelete.length}');
+      onProgress('   ❌ No se pueden eliminar: $referencedCount');
+
+      if (referencedCount > 0) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('⚠️ ASISTENTES REFERENCIADOS (NO SE PUEDEN ELIMINAR):');
+
+        for (final attendeeId in referencedAttendeeIds) {
+          final recordIds = attendeeReferences[attendeeId] ?? [];
+          onProgress('   👤 ID: $attendeeId');
+          onProgress(
+              '      📝 Referenciado en ${recordIds.length} registros: ${recordIds.join(', ')}');
+        }
+      }
+
+      if (safeToDelete.isNotEmpty) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('✅ ASISTENTES SEGUROS PARA ELIMINAR:');
+
+        for (final attendeeId in safeToDelete) {
+          onProgress('   👤 ID: $attendeeId');
+        }
+
+        if (!dryRun) {
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('🗑️ ELIMINANDO ASISTENTES...');
+
+          int deletedCount = 0;
+          for (final attendeeId in safeToDelete) {
+            try {
+              await _firestore.collection('attendees').doc(attendeeId).delete();
+              deletedCount++;
+              onProgress('   ✅ Eliminado: $attendeeId');
+            } catch (e) {
+              onProgress('   ❌ Error eliminando $attendeeId: $e');
+            }
+          }
+
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('🎉 ELIMINACIÓN COMPLETADA:');
+          onProgress('   ✅ Asistentes eliminados: $deletedCount');
+          onProgress('   🔗 Referenciados (no eliminados): $referencedCount');
+
+          return {
+            'totalAttendees': attendeesToDelete.length,
+            'referencedAttendees': referencedCount,
+            'safeToDelete': safeToDelete.length,
+            'deletedAttendees': deletedCount,
+            'dryRun': 0,
+          };
+        } else {
+          onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          onProgress('🔍 SIMULACIÓN COMPLETADA:');
+          onProgress(
+              '   📋 Asistentes que se eliminarían: ${safeToDelete.length}');
+          onProgress(
+              '   🔗 Referenciados (no se eliminarían): $referencedCount');
+          onProgress('   💡 Ejecuta sin dryRun=true para eliminar realmente');
+
+          return {
+            'totalAttendees': attendeesToDelete.length,
+            'referencedAttendees': referencedCount,
+            'safeToDelete': safeToDelete.length,
+            'deletedAttendees': 0,
+            'dryRun': 1,
+          };
+        }
+      } else {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('⚠️ NO HAY ASISTENTES SEGUROS PARA ELIMINAR');
+        onProgress(
+            '   Todos los asistentes están referenciados en registros de asistencia');
+        onProgress(
+            '   💡 Primero elimina los registros de asistencia que los referencian');
+
+        return {
+          'totalAttendees': attendeesToDelete.length,
+          'referencedAttendees': referencedCount,
+          'safeToDelete': 0,
+          'deletedAttendees': 0,
+          'dryRun': dryRun ? 1 : 0,
+        };
+      }
+    } catch (e) {
+      throw Exception('Error durante eliminación segura de asistentes: $e');
+    }
+  }
+
+  /// Elimina registros de asistencia específicos de forma segura
+  Future<Map<String, int>> deleteAttendanceRecordsSafely({
+    required Function(String) onProgress,
+    String? userEmail,
+    DateTime? specificDate, // Fecha específica a eliminar
+    String? sectorId, // Sector específico (si es null, todos los sectores)
+    String?
+        meetingType, // Tipo de reunión específico (si es null, todos los tipos)
+    bool dryRun = true, // Si es true, solo simula la eliminación
+  }) async {
+    _validateAccess(userEmail);
+
+    try {
+      onProgress('🔍 Paso 1: Buscando registros de asistencia...');
+
+      // Construir query base
+      Query query = _firestore.collection('attendanceRecords');
+
+      // Aplicar filtros si se especifican
+      if (sectorId != null) {
+        query = query.where('sectorId', isEqualTo: sectorId);
+        onProgress('📍 Filtro: Sector $sectorId');
+      }
+
+      if (meetingType != null) {
+        query = query.where('meetingType', isEqualTo: meetingType);
+        onProgress('📅 Filtro: Tipo de reunión $meetingType');
+      }
+
+      final querySnapshot = await query.get();
+      final allRecords = querySnapshot.docs;
+
+      onProgress('📋 Total registros encontrados: ${allRecords.length}');
+
+      // Filtrar por fecha si se especifica
+      List<QueryDocumentSnapshot> recordsToDelete = [];
+      if (specificDate != null) {
+        final targetDate =
+            DateTime(specificDate.year, specificDate.month, specificDate.day);
+
+        for (final doc in allRecords) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data == null) continue;
+
+          final recordDate = (data['date'] as Timestamp).toDate();
+          final recordNormalizedDate =
+              DateTime(recordDate.year, recordDate.month, recordDate.day);
+
+          if (recordNormalizedDate.isAtSameMomentAs(targetDate)) {
+            recordsToDelete.add(doc);
+          }
+        }
+
+        onProgress(
+            '📅 Filtro: Fecha ${targetDate.day}/${targetDate.month}/${targetDate.year}');
+      } else {
+        recordsToDelete = allRecords;
+      }
+
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📊 ANÁLISIS DE REGISTROS:');
+      onProgress('   📋 Total registros a eliminar: ${recordsToDelete.length}');
+
+      if (recordsToDelete.isEmpty) {
+        onProgress(
+            'ℹ️ No se encontraron registros que coincidan con los criterios');
+        return {
+          'totalRecords': 0,
+          'deletedRecords': 0,
+          'deletedAttendance': 0,
+          'dryRun': dryRun ? 1 : 0,
+        };
+      }
+
+      // Analizar registros a eliminar
+      int totalAttendance = 0;
+      final Map<String, int> sectorBreakdown = {};
+      final Map<String, int> meetingTypeBreakdown = {};
+
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📝 DETALLES DE REGISTROS A ELIMINAR:');
+
+      for (final doc in recordsToDelete) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+
+        final date = (data['date'] as Timestamp).toDate();
+        final attendedCount = (data['attendedAttendeeIds'] as List).length;
+        final visitorCount = (data['visitorCount'] as num?)?.toInt() ?? 0;
+        final recordTotal = attendedCount + visitorCount;
+        final recordSectorId = data['sectorId'] ?? 'Sin sector';
+        final recordMeetingType = data['meetingType'] ?? 'Sin tipo';
+
+        totalAttendance += recordTotal;
+
+        // Contar por sector
+        sectorBreakdown[recordSectorId] =
+            (sectorBreakdown[recordSectorId] ?? 0) + recordTotal;
+
+        // Contar por tipo de reunión
+        meetingTypeBreakdown[recordMeetingType] =
+            (meetingTypeBreakdown[recordMeetingType] ?? 0) + recordTotal;
+
+        onProgress(
+            '   🗓️ ${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}');
+        onProgress('      📍 Sector: $recordSectorId');
+        onProgress('      📝 Tipo: $recordMeetingType');
+        onProgress(
+            '      👥 $attendedCount asistentes + $visitorCount visitas = $recordTotal total');
+        onProgress('      🆔 ID: ${doc.id}');
+      }
+
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📊 RESUMEN POR SECTOR:');
+      for (final entry in sectorBreakdown.entries) {
+        onProgress('   📍 ${entry.key}: ${entry.value} personas');
+      }
+
+      onProgress('📊 RESUMEN POR TIPO DE REUNIÓN:');
+      for (final entry in meetingTypeBreakdown.entries) {
+        onProgress('   📝 ${entry.key}: ${entry.value} personas');
+      }
+
+      onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      onProgress('📊 RESUMEN FINAL:');
+      onProgress('   📋 Registros a eliminar: ${recordsToDelete.length}');
+      onProgress(
+          '   👥 Total asistencia a eliminar: $totalAttendance personas');
+
+      if (!dryRun) {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('🗑️ ELIMINANDO REGISTROS...');
+
+        int deletedCount = 0;
+        for (final doc in recordsToDelete) {
+          try {
+            await doc.reference.delete();
+            deletedCount++;
+            onProgress('   ✅ Eliminado: ${doc.id}');
+          } catch (e) {
+            onProgress('   ❌ Error eliminando ${doc.id}: $e');
+          }
+        }
+
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('🎉 ELIMINACIÓN COMPLETADA:');
+        onProgress('   ✅ Registros eliminados: $deletedCount');
+        onProgress('   👥 Asistencia eliminada: $totalAttendance personas');
+
+        return {
+          'totalRecords': recordsToDelete.length,
+          'deletedRecords': deletedCount,
+          'deletedAttendance': totalAttendance,
+          'dryRun': 0,
+        };
+      } else {
+        onProgress('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onProgress('🔍 SIMULACIÓN COMPLETADA:');
+        onProgress(
+            '   📋 Registros que se eliminarían: ${recordsToDelete.length}');
+        onProgress(
+            '   👥 Asistencia que se eliminaría: $totalAttendance personas');
+        onProgress('   💡 Ejecuta sin dryRun=true para eliminar realmente');
+
+        return {
+          'totalRecords': recordsToDelete.length,
+          'deletedRecords': 0,
+          'deletedAttendance': totalAttendance,
+          'dryRun': 1,
+        };
+      }
+    } catch (e) {
+      throw Exception(
+          'Error durante eliminación de registros de asistencia: $e');
+    }
+  }
 }
