@@ -17,6 +17,7 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
   int selectedYear = DateTime.now().year;
   String? selectedMonth;
   String? selectedCommuneId; // null significa "Todas las rutas"
+  String? selectedSectorId; // null significa "Todos los sectores"
   bool _isLoading = true;
 
   @override
@@ -213,7 +214,16 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                 .toList();
           }
 
-          final weeklyData = _processRecordsToWeeks(routeFilteredRecords);
+          // Filtrar por sector si está seleccionado
+          List<AttendanceRecordModel> sectorFilteredRecords =
+              routeFilteredRecords;
+          if (selectedSectorId != null) {
+            sectorFilteredRecords = routeFilteredRecords
+                .where((r) => r.sectorId == selectedSectorId)
+                .toList();
+          }
+
+          final weeklyData = _processRecordsToWeeks(sectorFilteredRecords);
 
           // Filtrar por mes si está seleccionado
           final filteredData = selectedMonth != null
@@ -336,6 +346,41 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   selectedCommuneId = value;
+                                  selectedSectorId =
+                                      null; // Reset sector cuando cambia la ruta
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Tercera fila: Selector de Sector
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Sector:',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButtonFormField<String>(
+                              value: selectedSectorId,
+                              hint: const Text('Todos los sectores'),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('Todos los sectores'),
+                                ),
+                                // Filtrar sectores según la ruta seleccionada
+                                ...locations
+                                    .where((location) =>
+                                        selectedCommuneId == null ||
+                                        location.communeId == selectedCommuneId)
+                                    .map((location) => DropdownMenuItem(
+                                          value: location.id,
+                                          child: Text(location.name),
+                                        )),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedSectorId = value;
                                 });
                               },
                             ),
@@ -391,11 +436,25 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
             .name
         : 'Todas las rutas';
 
+    final selectedSectorName = selectedSectorId != null
+        ? locationProvider.locations
+            .firstWhere((l) => l.id == selectedSectorId,
+                orElse: () => Location(
+                    id: '',
+                    name: 'Sector Desconocido',
+                    communeId: '',
+                    address: '',
+                    attendeeIds: [],
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now()))
+            .name
+        : 'Todos los sectores';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Reporte TTLs - Año $selectedYear${selectedMonth != null ? " - $selectedMonth" : ""} - $selectedRouteName',
+          'Reporte TTLs - Año $selectedYear${selectedMonth != null ? " - $selectedMonth" : ""} - $selectedRouteName - $selectedSectorName',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
