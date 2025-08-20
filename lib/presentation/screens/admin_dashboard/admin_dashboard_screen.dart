@@ -20,11 +20,13 @@ import 'package:asistencias_app/presentation/screens/admin_dashboard/generate_re
 import 'package:asistencias_app/presentation/screens/admin_dashboard/weekly_average_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/ttl_weekly_report_screen.dart';
 import 'package:asistencias_app/presentation/screens/admin_dashboard/quarterly_ttl_report_screen.dart';
+import 'package:asistencias_app/presentation/screens/admin_dashboard/sector_totals_report_screen.dart';
 import 'package:asistencias_app/data/models/location_models.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
 import 'package:asistencias_app/core/utils/date_utils.dart';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:asistencias_app/presentation/screens/admin_dashboard/sector_totals_report_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -741,6 +743,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const GenerateReportsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                if (PermissionUtils.canViewReports(user))
+                  ListTile(
+                    leading: const Icon(Icons.view_list),
+                    title: const Text('Reporte de Totales por Sectores'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const SectorTotalsReportScreen(),
                         ),
                       );
                     },
