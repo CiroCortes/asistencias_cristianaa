@@ -15,6 +15,7 @@ class SectorTotalsReportScreen extends StatefulWidget {
 
 class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
   int selectedYear = DateTime.now().year;
+  int? selectedMonth; // null = todos los meses
   int? selectedWeekNumber; // null = todas las semanas
   String? selectedCommuneId; // null = todas las rutas
   bool _isLoading = true;
@@ -51,14 +52,54 @@ class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
   List<int> _availableYears() =>
       List.generate(5, (i) => DateTime.now().year - i);
 
-  // Obtiene semanas disponibles a partir de los registros del año filtrado
+  // Obtiene meses disponibles a partir de los registros del año filtrado
+  List<int> _availableMonths(Iterable<AttendanceRecordModel> records) {
+    final monthSet = <int>{};
+    for (final r in records) {
+      if (r.date.year == selectedYear) monthSet.add(r.date.month);
+    }
+    final list = monthSet.toList()..sort();
+    return list;
+  }
+
+  // Obtiene semanas disponibles a partir de los registros del año (y mes) filtrado
   List<int> _availableWeeks(Iterable<AttendanceRecordModel> records) {
     final weekSet = <int>{};
     for (final r in records) {
-      if (r.date.year == selectedYear) weekSet.add(r.weekNumber);
+      bool matchesYear = r.date.year == selectedYear;
+      bool matchesMonth = selectedMonth == null || r.date.month == selectedMonth;
+      if (matchesYear && matchesMonth) {
+        weekSet.add(r.weekNumber);
+      }
     }
     final list = weekSet.toList()..sort();
     return list;
+  }
+
+  String _getMonthName(int month) {
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return monthNames[month - 1];
+  }
+
+  String _buildSummaryText() {
+    String periodText = '';
+    
+    if (selectedWeekNumber != null) {
+      periodText = 'semana $selectedWeekNumber';
+    } else {
+      periodText = 'todas las semanas';
+    }
+
+    if (selectedMonth != null) {
+      periodText += ' de ${_getMonthName(selectedMonth!)}';
+    }
+
+    periodText += ' de $selectedYear';
+    
+    return periodText;
   }
 
   Color _getCellColor(int value, int maxValue) {
@@ -92,8 +133,16 @@ class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
           final communes = locationProvider.communes;
           final locations = locationProvider.locations;
 
-          // Asegurar que la semana seleccionada esté en la lista (si cambió el año)
+          // Obtener meses y semanas disponibles
+          final monthsOfYear = _availableMonths(allRecords);
           final weeksOfYear = _availableWeeks(allRecords);
+          
+          // Asegurar que el mes seleccionado esté en la lista (si cambió el año)
+          if (selectedMonth != null && !monthsOfYear.contains(selectedMonth)) {
+            selectedMonth = null; // reset si no existe
+          }
+          
+          // Asegurar que la semana seleccionada esté en la lista (si cambió el año o mes)
           if (selectedWeekNumber != null &&
               !weeksOfYear.contains(selectedWeekNumber)) {
             selectedWeekNumber = null; // reset si no existe
@@ -102,6 +151,13 @@ class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
           // Filtrar por año
           List<AttendanceRecordModel> recordsByYear =
               allRecords.where((r) => r.date.year == selectedYear).toList();
+
+          // Filtrar por mes opcional
+          if (selectedMonth != null) {
+            recordsByYear = recordsByYear
+                .where((r) => r.date.month == selectedMonth)
+                .toList();
+          }
 
           // Filtrar por week opcional
           if (selectedWeekNumber != null) {
@@ -233,67 +289,85 @@ class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 12),
-                        Row(
+                        // Año
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Año
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Año:',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedYear,
-                                    items: _availableYears()
-                                        .map((y) => DropdownMenuItem(
-                                            value: y,
-                                            child: Text(y.toString())))
-                                        .toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedYear = value!;
-                                        selectedWeekNumber =
-                                            null; // reset semana al cambiar año
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            // Semana (opcional)
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Semanas (opcional):',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
-                                  DropdownButtonFormField<int>(
-                                    value: selectedWeekNumber,
-                                    hint: const Text('Todas las semanas'),
-                                    items: [
-                                      const DropdownMenuItem<int>(
-                                          value: null,
-                                          child: Text('Todas las semanas')),
-                                      ...weeksOfYear.map((w) =>
-                                          DropdownMenuItem<int>(
-                                              value: w,
-                                              child: Text(w.toString())))
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedWeekNumber = value;
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
+                            const Text('Año:',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButtonFormField<int>(
+                              value: selectedYear,
+                              items: _availableYears()
+                                  .map((y) => DropdownMenuItem(
+                                      value: y,
+                                      child: Text(y.toString())))
+                                  .toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedYear = value!;
+                                  selectedMonth = null; // reset mes al cambiar año
+                                  selectedWeekNumber = null; // reset semana al cambiar año
+                                });
+                              },
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
+                        // Mes (opcional)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Mes (opcional):',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButtonFormField<int>(
+                              value: selectedMonth,
+                              hint: const Text('Todos los meses'),
+                              items: [
+                                const DropdownMenuItem<int>(
+                                    value: null,
+                                    child: Text('Todos los meses')),
+                                ...monthsOfYear.map((m) =>
+                                    DropdownMenuItem<int>(
+                                        value: m,
+                                        child: Text(_getMonthName(m))))
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedMonth = value;
+                                  selectedWeekNumber = null; // reset semana al cambiar mes
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Semana (opcional)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Semanas (opcional):',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButtonFormField<int>(
+                              value: selectedWeekNumber,
+                              hint: const Text('Todas las semanas'),
+                              items: [
+                                const DropdownMenuItem<int>(
+                                    value: null,
+                                    child: Text('Todas las semanas')),
+                                ...weeksOfYear.map((w) =>
+                                    DropdownMenuItem<int>(
+                                        value: w,
+                                        child: Text(w.toString())))
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedWeekNumber = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         // Ruta (comuna)
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,7 +403,7 @@ class _SectorTotalsReportScreenState extends State<SectorTotalsReportScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'Mostrando totales para ${selectedWeekNumber != null ? 'semana $selectedWeekNumber de' : 'todas las semanas de'} $selectedYear' +
+                            'Mostrando totales para ${_buildSummaryText()}' +
                                 (selectedCommuneId != null
                                     ? ' - ${communes.firstWhere((c) => c.id == selectedCommuneId).name}'
                                     : ''),
