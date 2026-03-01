@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:asistencias_app/core/services/attendance_record_service.dart';
+import 'package:asistencias_app/core/utils/date_utils.dart';
 import 'package:asistencias_app/data/models/attendance_record_model.dart';
 import 'package:asistencias_app/core/providers/location_provider.dart';
 
@@ -141,23 +142,6 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
       'promedioVisitas': weekCount > 0 ? (totalVisitas / weekCount).round() : 0,
       'weekCount': weekCount,
     };
-  }
-
-  int _getWeekNumber(DateTime date) {
-    // SISTEMA NO ISO: Usar la misma lógica que date_utils.dart
-    // La semana 1 empieza el 1 de enero, sin importar el día de la semana
-    DateTime week1Start = DateTime(date.year, 1, 1);
-
-    // Si la fecha es anterior al 1 de enero, usar el 1 de enero del año anterior
-    if (date.isBefore(week1Start)) {
-      week1Start = DateTime(date.year - 1, 1, 1);
-    }
-
-    // Calcular días desde el 1 de enero
-    int diffDays = date.difference(week1Start).inDays;
-
-    // El número de semana es (días / 7) + 1
-    return (diffDays / 7).floor() + 1;
   }
 
   @override

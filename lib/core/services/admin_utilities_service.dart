@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:asistencias_app/core/utils/date_utils.dart';
 import 'dart:math';
 
 class AdminUtilitiesService {
@@ -15,26 +16,6 @@ class AdminUtilitiesService {
       throw Exception(
           'Acceso denegado: Usuario no autorizado para utilidades de administrador');
     }
-  }
-
-  // Función para calcular número de semana (SISTEMA NO ISO)
-  int _getWeekNumber(DateTime date) {
-    // SISTEMA NO ISO: Semana 1 empieza el 1 de enero, cada semana empieza el lunes
-    // Directriz del cliente: La Semana 1 del año comienza el 1 de enero
-
-    // La semana 1 empieza el 1 de enero, sin importar el día de la semana
-    DateTime week1Start = DateTime(date.year, 1, 1);
-
-    // Si la fecha es anterior al 1 de enero, usar el 1 de enero del año anterior
-    if (date.isBefore(week1Start)) {
-      week1Start = DateTime(date.year - 1, 1, 1);
-    }
-
-    // Calcular días desde el 1 de enero
-    int diffDays = date.difference(week1Start).inDays;
-
-    // El número de semana es (días / 7) + 1
-    return (diffDays / 7).floor() + 1;
   }
 
   // Crear solo asistentes TEST (10 por sector)
@@ -304,7 +285,7 @@ class AdminUtilitiesService {
               .map((doc) => doc.id)
               .toList();
           final visitorCount = _random.nextInt(6);
-          final weekNumber = _getWeekNumber(date);
+          final weekNumber = getWeekNumber(date);
 
           final attendanceRecord = {
             'sectorId': sectorId,
@@ -481,7 +462,7 @@ class AdminUtilitiesService {
       onProgress('🔍 Iniciando análisis de discrepancias de asistencia...');
 
       final now = DateTime.now();
-      final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
+      final targetWeek = specificWeekNumber ?? getWeekNumber(now);
       final currentYear = now.year;
 
       onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
@@ -688,7 +669,7 @@ class AdminUtilitiesService {
           '${dryRun ? '🔍 MODO SIMULACIÓN' : '⚠️ MODO ELIMINACIÓN REAL'}');
 
       final now = DateTime.now();
-      final targetWeek = specificWeekNumber ?? _getWeekNumber(now);
+      final targetWeek = specificWeekNumber ?? getWeekNumber(now);
       final currentYear = now.year;
 
       onProgress('📅 Analizando Semana $targetWeek del año $currentYear');
