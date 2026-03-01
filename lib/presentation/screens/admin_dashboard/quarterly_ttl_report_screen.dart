@@ -91,7 +91,7 @@ class _QuarterlyTTLReportScreenState extends State<QuarterlyTTLReportScreen> {
     // Agrupar por semana
     final Map<int, List<AttendanceRecordModel>> weekGroups = {};
     for (final record in monthRecords) {
-      final weekNum = record.weekNumber ?? _getWeekNumber(record.date);
+      final weekNum = record.weekNumber ?? getWeekNumber(record.date);
       if (!weekGroups.containsKey(weekNum)) {
         weekGroups[weekNum] = [];
       }

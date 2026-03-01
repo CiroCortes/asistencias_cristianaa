@@ -105,7 +105,7 @@ class _TTLWeeklyReportScreenState extends State<TTLWeeklyReportScreen> {
 
     // Agrupar registros por número de semana
     for (final record in records) {
-      final weekNum = record.weekNumber ?? _getWeekNumber(record.date);
+      final weekNum = record.weekNumber ?? getWeekNumber(record.date);
       if (!weekGroups.containsKey(weekNum)) {
         weekGroups[weekNum] = [];
       }
