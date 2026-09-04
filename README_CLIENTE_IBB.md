@@ -53,17 +53,19 @@ cd ..
 
 ---
 
-## ▶️ 4. Ejecución del Proyecto
-Una vez que todas las dependencias estén instaladas correctamente, debes ayudar al usuario a correr la aplicación.
+## ▶️ 4. Ejecución del Proyecto en Dispositivo Físico
+El usuario quiere probar la aplicación conectando su **teléfono móvil físico** a la Mac. NO uses el simulador a menos que sea estrictamente necesario.
 
-1. **Abrir el simulador:** Si el usuario no tiene un dispositivo conectado, puedes abrir el simulador de iOS ejecutando:
+1. **Verificar dispositivo conectado:** Ejecuta el siguiente comando para listar los dispositivos disponibles:
    ```bash
-   open -a Simulator
+   flutter devices
    ```
-2. **Correr la app:**
+2. **Conectar el teléfono:** Si no aparece un dispositivo físico (iOS o Android) en la lista, pídele al usuario que conecte su teléfono mediante cable USB a la Mac y que acepte los permisos de "Confiar en esta computadora" en su pantalla.
+3. **Correr la app:** Una vez detectado el dispositivo físico, ejecuta la aplicación:
    ```bash
    flutter run
    ```
+   *(Si hay múltiples dispositivos, usa `flutter run -d <device_id>`)*
 
 ---
 
