@@ -44,9 +44,9 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyBDOaakQqPC2z3KBATy8R_PppKteO7AiNg',
     appId: '1:598309562855:web:b5bc3977df385225853542',
     messagingSenderId: '598309562855',
-    projectId: 'asistenciasappcristiana',
-    authDomain: 'asistenciasappcristiana.firebaseapp.com',
-    storageBucket: 'asistenciasappcristiana.firebasestorage.app',
+    projectId: 'asistenciasappcristiana-9385b',
+    authDomain: 'asistenciasappcristiana-9385b.firebaseapp.com',
+    storageBucket: 'asistenciasappcristiana-9385b.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -61,8 +61,8 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyBxrNfBUKSrdXMiejtlxPN-Df3lLKSZta8',
     appId: '1:598309562855:ios:30636b97c3e85235853542',
     messagingSenderId: '598309562855',
-    projectId: 'asistenciasappcristiana',
-    storageBucket: 'asistenciasappcristiana.firebasestorage.app',
+    projectId: 'asistenciasappcristiana-9385b',
+    storageBucket: 'asistenciasappcristiana-9385b.firebasestorage.app',
     iosBundleId: 'com.example.asistenciasApp',
   );
 
@@ -70,8 +70,8 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyBxrNfBUKSrdXMiejtlxPN-Df3lLKSZta8',
     appId: '1:598309562855:ios:30636b97c3e85235853542',
     messagingSenderId: '598309562855',
-    projectId: 'asistenciasappcristiana',
-    storageBucket: 'asistenciasappcristiana.firebasestorage.app',
+    projectId: 'asistenciasappcristiana-9385b',
+    storageBucket: 'asistenciasappcristiana-9385b.firebasestorage.app',
     iosBundleId: 'com.example.asistenciasApp',
   );
 
@@ -79,8 +79,8 @@ class DefaultFirebaseOptions {
     apiKey: 'AIzaSyBDOaakQqPC2z3KBATy8R_PppKteO7AiNg',
     appId: '1:598309562855:web:6edd74ab02e1f2c9853542',
     messagingSenderId: '598309562855',
-    projectId: 'asistenciasappcristiana',
-    authDomain: 'asistenciasappcristiana.firebaseapp.com',
-    storageBucket: 'asistenciasappcristiana.firebasestorage.app',
+    projectId: 'asistenciasappcristiana-9385b',
+    authDomain: 'asistenciasappcristiana-9385b.firebaseapp.com',
+    storageBucket: 'asistenciasappcristiana-9385b.firebasestorage.app',
   );
 }

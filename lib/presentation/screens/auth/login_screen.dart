@@ -135,9 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Image.network(
-                      'https://www.google.com/favicon.ico',
-                      height: 24.0,
+                  : const Icon(
+                      Icons.account_circle,
+                      size: 24.0,
+                      color: Colors.blue,
                     ),
               label: _isLoading
                   ? const Text('Iniciando sesión...')
